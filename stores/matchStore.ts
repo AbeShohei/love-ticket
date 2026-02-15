@@ -1,7 +1,7 @@
 import { MOCK_MATCHES } from '@/constants/MockData';
 import { create } from 'zustand';
 
-export type MatchType = 'star' | 'love';
+export type MatchType = 'star' | 'love' | 'nope';
 
 export type Match = {
     id: string;

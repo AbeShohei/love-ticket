@@ -9,4 +9,6 @@ export type Proposal = {
     price?: string;
     candidateDates?: string[];
     createdAt: Date;
+    image_url?: string;
+    isAd?: boolean;
 };

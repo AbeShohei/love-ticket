@@ -1,3 +1,4 @@
+import { MultiSelectCalendar } from '@/components/MultiSelectCalendar';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -18,7 +19,6 @@ import {
     View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MultiSelectCalendar } from '../../components/MultiSelectCalendar';
 import { CATEGORIES } from '../../constants/Presets';
 import { Proposal } from '../../types/Proposal';
 
@@ -443,6 +443,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: '#444',
+        paddingBottom: 220,
     },
     placeholderText: {
         color: '#fff',

@@ -43,7 +43,7 @@ export default function ExploreScreen() {
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
-            <Text style={styles.headerTitle}>Explore</Text>
+            <Text style={styles.headerTitle}>カタログ</Text>
             <BannerAdComponent />
             <FlatList
                 data={CATEGORIES}

@@ -8,11 +8,29 @@ interface Props {
   onChange: (date: Date) => void;
   style?: any;
   title?: string;
+  show?: boolean;
+  onClose?: () => void;
 }
 
-export function NativeDateTimePicker({ mode = 'datetime', value, onChange, style, title }: Props) {
-  const [show, setShow] = useState(false);
+export function NativeDateTimePicker({ mode = 'datetime', value, onChange, style, title, show: externalShow, onClose }: Props) {
+  const [internalShow, setInternalShow] = useState(false);
+  const isControlled = typeof externalShow !== 'undefined';
+  const show = isControlled ? externalShow : internalShow;
+
+  const setShow = (visible: boolean) => {
+    if (isControlled) {
+      if (!visible && onClose) onClose();
+    } else {
+      setInternalShow(visible);
+    }
+  };
   const [tempValue, setTempValue] = useState(value); // For iOS internal state before "Done"
+
+  React.useEffect(() => {
+    if (show) {
+      setTempValue(value);
+    }
+  }, [show, value]);
 
   const handleAndroidChange = (event: DateTimePickerEvent, date?: Date) => {
     setShow(false);
@@ -80,10 +98,14 @@ export function NativeDateTimePicker({ mode = 'datetime', value, onChange, style
   if (Platform.OS === 'ios') {
     return (
       <View style={[styles.container, style]}>
-        {title && <Text style={styles.label}>{title}</Text>}
-        <TouchableOpacity style={styles.displayButton} onPress={() => { setTempValue(value); setShow(true); }}>
-          <Text style={styles.displayText}>{displayValue}</Text>
-        </TouchableOpacity>
+        {!isControlled && (
+          <>
+            {title && <Text style={styles.label}>{title}</Text>}
+            <TouchableOpacity style={styles.displayButton} onPress={() => { setTempValue(value); setShow(true); }}>
+              <Text style={styles.displayText}>{displayValue}</Text>
+            </TouchableOpacity>
+          </>
+        )}
 
         <Modal
           visible={show}
@@ -121,10 +143,14 @@ export function NativeDateTimePicker({ mode = 'datetime', value, onChange, style
   if (Platform.OS === 'android') {
     return (
       <View style={[styles.container, style]}>
-        {title && <Text style={styles.label}>{title}</Text>}
-        <TouchableOpacity style={styles.displayButton} onPress={() => setShow(true)}>
-          <Text style={styles.displayText}>{displayValue}</Text>
-        </TouchableOpacity>
+        {!isControlled && (
+          <>
+            {title && <Text style={styles.label}>{title}</Text>}
+            <TouchableOpacity style={styles.displayButton} onPress={() => setShow(true)}>
+              <Text style={styles.displayText}>{displayValue}</Text>
+            </TouchableOpacity>
+          </>
+        )}
 
         {show && (
           <RNDateTimePicker

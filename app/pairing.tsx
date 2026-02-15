@@ -110,8 +110,8 @@ export default function Pairing() {
         return (
             <View style={styles.container}>
                 <Heart size={64} color="#FF4B4B" style={{ marginBottom: 24 }} />
-                <Text style={styles.title}>Couple Created! 🎉</Text>
-                <Text style={styles.subtitle}>Share this code with your partner:</Text>
+                <Text style={styles.title}>カップルを作成しました！ 🎉</Text>
+                <Text style={styles.subtitle}>パートナーにQRコードや招待コードを送ってください：</Text>
 
                 <TouchableOpacity style={styles.codeContainer} onPress={copyToClipboard}>
                     <Text style={styles.codeText}>{generatedCode}</Text>
@@ -119,14 +119,14 @@ export default function Pairing() {
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.button} onPress={shareCode}>
-                    <Text style={styles.buttonText}>Share Code</Text>
+                    <Text style={styles.buttonText}>コードを共有する</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                     style={[styles.button, styles.secondaryButton]}
                     onPress={() => router.replace('/(tabs)')}
                 >
-                    <Text style={[styles.buttonText, styles.secondaryButtonText]}>Go to App</Text>
+                    <Text style={[styles.buttonText, styles.secondaryButtonText]}>アプリを始める</Text>
                 </TouchableOpacity>
             </View>
         );
@@ -134,45 +134,45 @@ export default function Pairing() {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>Pairing</Text>
-            <Text style={styles.subtitle}>Connect with your partner</Text>
+            <Text style={styles.title}>ペアリング</Text>
+            <Text style={styles.subtitle}>パートナーと連携しましょう</Text>
 
             <View style={styles.toggleContainer}>
                 <TouchableOpacity
                     style={[styles.toggleButton, mode === 'create' && styles.activeToggle]}
                     onPress={() => setMode('create')}
                 >
-                    <Text style={[styles.toggleText, mode === 'create' && styles.activeToggleText]}>Create</Text>
+                    <Text style={[styles.toggleText, mode === 'create' && styles.activeToggleText]}>新しく始める</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[styles.toggleButton, mode === 'join' && styles.activeToggle]}
                     onPress={() => setMode('join')}
                 >
-                    <Text style={[styles.toggleText, mode === 'join' && styles.activeToggleText]}>Join</Text>
+                    <Text style={[styles.toggleText, mode === 'join' && styles.activeToggleText]}>招待コードを入力</Text>
                 </TouchableOpacity>
             </View>
 
             {mode === 'create' ? (
                 <View style={styles.content}>
                     <Text style={styles.description}>
-                        Create a new couple space and get an invite code for your partner.
+                        新しくカップル専用のスペースを作成し、パートナーに共有するための招待コードを発行します。
                     </Text>
                     <TouchableOpacity
                         style={styles.button}
                         onPress={createCouple}
                         disabled={loading}
                     >
-                        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Generate Invite Code</Text>}
+                        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>招待コードを発行する</Text>}
                     </TouchableOpacity>
                 </View>
             ) : (
                 <View style={styles.content}>
                     <Text style={styles.description}>
-                        Enter the invite code from your partner.
+                        パートナーから受け取った招待コードを入力してください。
                     </Text>
                     <TextInput
                         style={styles.input}
-                        placeholder="Invite Code (e.g. A1B2C3)"
+                        placeholder="招待コードを入力 (例: A1B2C3)"
                         placeholderTextColor="#aaa"
                         value={inviteCode}
                         onChangeText={setInviteCode}
@@ -184,7 +184,7 @@ export default function Pairing() {
                         onPress={joinCouple}
                         disabled={loading}
                     >
-                        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Join Couple</Text>}
+                        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>カップルに参加する</Text>}
                     </TouchableOpacity>
                 </View>
             )}

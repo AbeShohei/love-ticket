@@ -3,13 +3,14 @@ import { CATEGORIES } from '@/constants/Presets';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
 import { useMatchStore } from '@/stores/matchStore';
+import { useSwipeStore } from '@/stores/swipeStore';
 import { Ionicons } from '@expo/vector-icons';
 import MaskedView from '@react-native-masked-view/masked-view';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, Linking, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -35,19 +36,7 @@ const CARD_HEIGHT = SCREEN_HEIGHT - 90; // Fill screen height minus tab bar (app
 const DAILY_LIKE_LIMIT = 10;
 const DAILY_SUPER_LIKE_LIMIT = 1;
 
-type Proposal = {
-  id: string;
-  isAd?: boolean;
-  title: string;
-  description: string;
-  image_url: string | null;
-  images?: string[];
-  category: string;
-  location?: string;
-  url?: string;
-  price?: string;
-  created_by: string;
-};
+import { Proposal } from '@/types/Proposal';
 
 type DailyUsage = {
   like_count: number;
@@ -64,7 +53,9 @@ export default function SwipeScreen() {
 
   const { profile } = useAuth();
   const router = useRouter();
+  const params = useLocalSearchParams<{ retryId?: string }>();
   const addMatch = useMatchStore((state) => state.addMatch);
+  const addSwipe = useSwipeStore((state) => state.addSwipe);
 
   // Swipe Animation Shared Values (Lifted for interactive buttons)
   const translateX = useSharedValue(0);
@@ -104,12 +95,33 @@ export default function SwipeScreen() {
       super_like_count: 0,
       proposal_create_count: 1
     });
+
+    // Handle retry/re-swipe from history
+    if (params.retryId) {
+      const retryProposal = augmentedProposals.find(p => p.id === params.retryId);
+      if (retryProposal) {
+        const filtered = augmentedProposals.filter(p => p.id !== params.retryId);
+        setProposals([retryProposal, ...filtered]);
+        setCurrentIndex(0);
+      } else {
+        setProposals(augmentedProposals);
+      }
+    } else {
+      setProposals(augmentedProposals);
+    }
+
     setLoading(false);
-  }, []); // Remove profile/proposals.length to avoid loops
+  }, [params.retryId]); // Added params.retryId to dependency
 
   useEffect(() => {
     fetchData(true);
   }, [fetchData]);
+
+  // Reset button highlights when cards change or are cleared
+  useEffect(() => {
+    translateX.value = withTiming(0);
+    translateY.value = withTiming(0);
+  }, [currentIndex]);
 
   const activeProposal = proposals[currentIndex];
 
@@ -129,8 +141,11 @@ export default function SwipeScreen() {
     }
 
     // Optimistic Update
-    // Do NOT reset translateX/Y here anymore, SwipeableCard will handle its own local values
     setCurrentIndex(prev => prev + 1);
+
+    // Ensure button states reset
+    translateX.value = 0;
+    translateY.value = 0;
 
     // Update Usage Local
     if (direction === 'right') {
@@ -142,9 +157,18 @@ export default function SwipeScreen() {
     // activeProposal is already declared above
     if (!activeProposal) return;
 
-    // Skip backend call for mock data
-    if (activeProposal.id.startsWith('mock-')) {
-      console.log('Swiped mock proposal:', activeProposal.id, direction);
+    // Record swipe in history store (Exclude Ads)
+    if (!activeProposal.isAd) {
+      addSwipe({
+        ...activeProposal,
+        createdAt: activeProposal.createdAt || new Date(),
+        images: activeProposal.images || [activeProposal.image_url || 'https://placehold.co/600x400'],
+      } as any, direction);
+    }
+
+    // Skip backend call for mock data and ads
+    if (activeProposal.id.startsWith('mock-') || activeProposal.isAd || activeProposal.id.startsWith('ad-')) {
+      console.log('Swiped mock or ad:', activeProposal.id, direction);
 
       // Add to local match store
       if (direction === 'right' || direction === 'up') {
@@ -232,10 +256,7 @@ export default function SwipeScreen() {
               style={{ width: 80, height: 80, borderRadius: 40 }}
             />
           </View>
-          <Text style={styles.emptyText}>No more profiles nearby.</Text>
-          <TouchableOpacity style={styles.refreshButton} onPress={() => fetchData(true)}>
-            <Text style={styles.refreshButtonText}>REFRESH</Text>
-          </TouchableOpacity>
+          <Text style={styles.emptyText}>デート案が尽きました...</Text>
         </View>
 
         {/* Card Stack - Persistent rendering to avoid flashes */}

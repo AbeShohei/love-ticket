@@ -61,12 +61,12 @@ export default function Login() {
 
             <View style={styles.content}>
                 <Text style={styles.title}>Love Ticket</Text>
-                <Text style={styles.subtitle}>Sign in to start matching</Text>
+                <Text style={styles.subtitle}>ログインしてデートを始めましょう</Text>
 
                 <View style={styles.inputContainer}>
                     <TextInput
                         style={styles.input}
-                        placeholder="Email"
+                        placeholder="メールアドレス"
                         placeholderTextColor="#666"
                         value={email}
                         onChangeText={setEmail}
@@ -74,7 +74,7 @@ export default function Login() {
                     />
                     <TextInput
                         style={styles.input}
-                        placeholder="Password"
+                        placeholder="パスワード"
                         placeholderTextColor="#666"
                         value={password}
                         onChangeText={setPassword}
@@ -97,16 +97,16 @@ export default function Login() {
                         {loading ? (
                             <ActivityIndicator color="#fff" />
                         ) : (
-                            <Text style={styles.buttonText}>Sign In</Text>
+                            <Text style={styles.buttonText}>ログイン</Text>
                         )}
                     </LinearGradient>
                 </TouchableOpacity>
 
                 <View style={styles.footer}>
-                    <Text style={styles.footerText}>Don't have an account?</Text>
+                    <Text style={styles.footerText}>アカウントをお持ちでないですか？</Text>
                     <Link href="/register" asChild>
                         <TouchableOpacity onPress={() => Platform.OS !== 'web' && Haptics.selectionAsync()}>
-                            <Text style={styles.link}>Sign Up</Text>
+                            <Text style={styles.link}>新規登録</Text>
                         </TouchableOpacity>
                     </Link>
                 </View>

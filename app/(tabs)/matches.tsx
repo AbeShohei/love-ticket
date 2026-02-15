@@ -1,10 +1,12 @@
 import { MultiSelectCalendar } from '@/components/MultiSelectCalendar';
 import { CATEGORIES } from '@/constants/Presets';
 import { useAuth } from '@/providers/AuthProvider';
-import { Match, useMatchStore } from '@/stores/matchStore';
+import { useMatchStore } from '@/stores/matchStore';
 import { CandidateSlot, usePlanStore } from '@/stores/planStore';
+import { SwipeRecord, useSwipeStore } from '@/stores/swipeStore';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Dimensions, Modal, RefreshControl, ScrollView, SectionList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,12 +20,21 @@ import { NativeDateTimePicker } from '../../components/NativeDateTimePicker';
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
 export default function MatchesScreen() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const { profile } = useAuth();
   const matches = useMatchStore((state) => state.matches);
+  const history = useSwipeStore((state) => state.history);
   const plans = usePlanStore((state) => state.plans);
   const addPlan = usePlanStore((state) => state.addPlan);
   const updatePlan = usePlanStore((state) => state.updatePlan);
+
+  const handleHistoryPress = (record: SwipeRecord) => {
+    router.push({
+      pathname: '/',
+      params: { retryId: record.id }
+    });
+  };
 
   // Filter out matches that are already in a plan
   const visibleMatches = React.useMemo(() => {
@@ -33,6 +44,7 @@ export default function MatchesScreen() {
 
   // Planning State
   const [isPlanningModalVisible, setIsPlanningModalVisible] = useState(false);
+  const [isHistoryBottomSheetVisible, setIsHistoryBottomSheetVisible] = useState(false);
   // const [isCalendarVisible, setIsCalendarVisible] = useState(false); // Removed
   // const [activeSlotIndex, setActiveSlotIndex] = useState<number | null>(null); // Removed
   // const [activeSlotIndex, setActiveSlotIndex] = useState<number | null>(null); // Removed
@@ -61,22 +73,24 @@ export default function MatchesScreen() {
   }, [fetchMatches]);
 
   // Grouping Logic
-  const sections = CATEGORIES.map(cat => {
-    const sectionMatches = visibleMatches
-      .filter(m => m.tags?.includes(cat.id))
-      .sort((a, b) => {
-        if (a.type === 'star' && b.type !== 'star') return -1;
-        if (a.type !== 'star' && b.type === 'star') return 1;
-        return b.timestamp - a.timestamp;
-      });
+  const sections = React.useMemo(() => {
+    return CATEGORIES.map(cat => {
+      const sectionMatches = visibleMatches
+        .filter(m => m.tags?.includes(cat.id))
+        .sort((a, b) => {
+          if (a.type === 'star' && b.type !== 'star') return -1;
+          if (a.type !== 'star' && b.type === 'star') return 1;
+          return b.timestamp - a.timestamp;
+        });
 
-    return {
-      title: cat.label,
-      icon: cat.icon,
-      color: cat.color,
-      data: sectionMatches,
-    };
-  }).filter(section => section.data.length > 0);
+      return {
+        title: cat.label,
+        icon: cat.icon,
+        color: cat.color,
+        data: sectionMatches,
+      };
+    }).filter(section => section.data.length > 0);
+  }, [visibleMatches]);
 
   // Handle matches without a valid category
   const uncategorized = visibleMatches
@@ -227,10 +241,10 @@ export default function MatchesScreen() {
 
   // Date/Time helper functions removed
 
-  const renderMatchCard = ({ item }: { item: Match }) => (
+  const renderMatchCard = ({ item }: { item: any }) => (
     <MatchCard
       item={item}
-      onPress={() => openPlanningModal(item.id)}
+      onPress={() => item.isHistory ? handleHistoryPress(item) : openPlanningModal(item.id)}
     />
   );
 
@@ -242,9 +256,18 @@ export default function MatchesScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={20} color="#999" style={{ marginRight: 8 }} />
-          <TextInput placeholder="Search Matches" placeholderTextColor="#999" style={styles.searchInput} />
+        <View style={styles.searchRow}>
+          <View style={styles.searchBar}>
+            <Ionicons name="search" size={20} color="#999" style={{ marginRight: 8 }} />
+            <TextInput placeholder="チケットを検索" placeholderTextColor="#999" style={styles.searchInput} />
+          </View>
+
+          <TouchableOpacity
+            style={styles.historyIconButton}
+            onPress={() => setIsHistoryBottomSheetVisible(true)}
+          >
+            <Ionicons name="time-outline" size={24} color="#333" />
+          </TouchableOpacity>
         </View>
 
         {/* Date Plans Section */}
@@ -289,8 +312,8 @@ export default function MatchesScreen() {
         stickySectionHeadersEnabled={false}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>No matches yet.</Text>
-            <Text style={styles.emptyStateSubtext}>Go to Explore to find someone!</Text>
+            <Text style={styles.emptyStateText}>チケットがまだありません</Text>
+            <Text style={styles.emptyStateSubtext}>カタログから行きたい場所を探しましょう！</Text>
           </View>
         }
       />
@@ -329,7 +352,7 @@ export default function MatchesScreen() {
             <View style={styles.progressTracker}>
               {[
                 { label: '案を決める', icon: 'bulb-outline' },
-                { label: '日を選ぶ', icon: 'calendar-outline' },
+                { label: '日程を選ぶ', icon: 'calendar-outline' },
                 { label: '確定する', icon: 'checkmark-circle-outline' }
               ].map((item, index) => {
                 const stepNumber = index + 1;
@@ -571,6 +594,82 @@ export default function MatchesScreen() {
 
       {/* Calendar Modal */}
       {/* Calendar Modal REMOVED */}
+
+      {/* History BottomSheet Modal */}
+      <Modal
+        visible={isHistoryBottomSheetVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsHistoryBottomSheetVisible(false)}
+      >
+        <View style={styles.bottomSheetOverlay}>
+          <TouchableOpacity
+            style={styles.bottomSheetCloseArea}
+            onPress={() => setIsHistoryBottomSheetVisible(false)}
+            activeOpacity={1}
+          />
+          <View style={styles.bottomSheetContent}>
+            <View style={styles.bottomSheetHeader}>
+              <View style={styles.bottomSheetHandle} />
+              <View style={styles.bottomSheetTitleContainer}>
+                <Ionicons name="time-outline" size={20} color="#333" />
+                <Text style={styles.bottomSheetTitle}>スワイプ履歴 (最近の20件)</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.bottomSheetCloseButton}
+                onPress={() => setIsHistoryBottomSheetVisible(false)}
+              >
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              style={styles.historyModalScroll}
+              contentContainerStyle={styles.historyModalContent}
+              showsVerticalScrollIndicator={false}
+            >
+              {history.length > 0 ? (
+                history.slice(0, 20).map((record) => (
+                  <View key={record.id} style={styles.historyItemWrapper}>
+                    <MatchCard
+                      item={{
+                        id: record.id,
+                        name: record.proposal.title,
+                        image: record.proposal.images?.[0] || record.proposal.image_url || 'https://placehold.co/200x200',
+                        type: (record.direction === 'left' ? 'nope' : (record.direction === 'up' ? 'star' : 'love')) as any,
+                        timestamp: record.timestamp,
+                        bio: record.proposal.description,
+                        location: record.proposal.location,
+                        tags: [record.proposal.category],
+                        price: record.proposal.price,
+                        url: record.proposal.url,
+                      } as any}
+                      onPress={() => {
+                        setIsHistoryBottomSheetVisible(false);
+                        handleHistoryPress(record);
+                      }}
+                    />
+                    <TouchableOpacity
+                      style={styles.reselectButton}
+                      onPress={() => {
+                        setIsHistoryBottomSheetVisible(false);
+                        handleHistoryPress(record);
+                      }}
+                    >
+                      <Ionicons name="refresh" size={16} color="#fd297b" />
+                      <Text style={styles.reselectButtonText}>選択しなおす</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))
+              ) : (
+                <View style={styles.emptyHistory}>
+                  <Text style={styles.emptyHistoryText}>履歴がまだありません</Text>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -588,18 +687,30 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   searchBar: {
+    flex: 1,
     flexDirection: 'row',
     backgroundColor: '#f0f0f0',
     padding: 10,
     borderRadius: 12,
     alignItems: 'center',
+    height: 44,
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
     color: '#333',
     paddingVertical: 4,
+  },
+  historyIconButton: {
+    padding: 8,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 12,
   },
   listContent: {
     padding: 15,
@@ -1051,6 +1162,91 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
   },
   categoryTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  // BottomSheet Styles
+  bottomSheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  bottomSheetCloseArea: {
+    flex: 1,
+  },
+  bottomSheetContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    height: '80%',
+    paddingBottom: 40,
+  },
+  bottomSheetHeader: {
+    alignItems: 'center',
+    paddingTop: 12,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  bottomSheetHandle: {
+    width: 36,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#e0e0e0',
+    marginBottom: 16,
+  },
+  bottomSheetTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  bottomSheetTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  bottomSheetCloseButton: {
+    position: 'absolute',
+    right: 20,
+    top: 25,
+  },
+  historyModalScroll: {
+    flex: 1,
+  },
+  historyModalContent: {
+    padding: 20,
+  },
+  emptyHistory: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  emptyHistoryText: {
+    color: '#999',
+    fontSize: 16,
+  },
+  historyItemWrapper: {
+    marginBottom: 20,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
+    paddingBottom: 12,
+  },
+  reselectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    paddingVertical: 8,
+    marginHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#fd297b',
+    gap: 6,
+  },
+  reselectButtonText: {
+    color: '#fd297b',
     fontSize: 14,
     fontWeight: 'bold',
   },

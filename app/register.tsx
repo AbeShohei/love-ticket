@@ -72,20 +72,20 @@ export default function Register() {
             <BlurView intensity={80} tint="light" style={StyleSheet.absoluteFillObject} />
 
             <View style={styles.content}>
-                <Text style={styles.title}>Create Account</Text>
-                <Text style={styles.subtitle}>Join Love Ticket today</Text>
+                <Text style={styles.title}>アカウント作成</Text>
+                <Text style={styles.subtitle}>Love Ticket を始めましょう</Text>
 
                 <View style={styles.inputContainer}>
                     <TextInput
                         style={styles.input}
-                        placeholder="Display Name"
+                        placeholder="表示名"
                         placeholderTextColor="#666"
                         value={displayName}
                         onChangeText={setDisplayName}
                     />
                     <TextInput
                         style={styles.input}
-                        placeholder="Email"
+                        placeholder="メールアドレス"
                         placeholderTextColor="#666"
                         value={email}
                         onChangeText={setEmail}
@@ -93,7 +93,7 @@ export default function Register() {
                     />
                     <TextInput
                         style={styles.input}
-                        placeholder="Password"
+                        placeholder="パスワード"
                         placeholderTextColor="#666"
                         value={password}
                         onChangeText={setPassword}
@@ -116,16 +116,16 @@ export default function Register() {
                         {loading ? (
                             <ActivityIndicator color="#fff" />
                         ) : (
-                            <Text style={styles.buttonText}>Sign Up</Text>
+                            <Text style={styles.buttonText}>登録する</Text>
                         )}
                     </LinearGradient>
                 </TouchableOpacity>
 
                 <View style={styles.footer}>
-                    <Text style={styles.footerText}>Already have an account?</Text>
+                    <Text style={styles.footerText}>すでにアカウントをお持ちですか？</Text>
                     <Link href="/login" asChild>
                         <TouchableOpacity onPress={() => Platform.OS !== 'web' && Haptics.selectionAsync()}>
-                            <Text style={styles.link}>Sign In</Text>
+                            <Text style={styles.link}>ログイン</Text>
                         </TouchableOpacity>
                     </Link>
                 </View>

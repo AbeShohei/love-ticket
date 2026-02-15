@@ -10,28 +10,28 @@ export default function TabLayout() {
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="index">
-        <Icon src={<VectorIcon family={Ionicons} name="flame" />} />
-        <Label>Discovery</Label>
+        <Icon src={<VectorIcon family={Ionicons} name="heart-outline" />} />
+        <Label>デート案</Label>
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="explore">
-        <Icon src={<VectorIcon family={Ionicons} name="grid" />} />
-        <Label>Explore</Label>
+        <Icon src={<VectorIcon family={Ionicons} name="add-circle-outline" />} />
+        <Label>カタログ</Label>
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="schedule">
-        <Icon src={<VectorIcon family={Ionicons} name="calendar" />} />
-        <Label>Schedule</Label>
+        <Icon src={<VectorIcon family={Ionicons} name="calendar-outline" />} />
+        <Label>予定</Label>
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="matches">
-        <Icon src={<VectorIcon family={Ionicons} name="chatbubbles" />} />
-        <Label>Matches</Label>
+        <Icon src={<VectorIcon family={Ionicons} name="ticket-outline" />} />
+        <Label>チケット</Label>
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="profile">
-        <Icon src={<VectorIcon family={Ionicons} name="person" />} />
-        <Label>Profile</Label>
+        <Icon src={<VectorIcon family={Ionicons} name="person-circle-outline" />} />
+        <Label>マイページ</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );

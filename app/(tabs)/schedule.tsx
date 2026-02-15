@@ -7,8 +7,8 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useMemo, useState } from 'react';
 import { Dimensions, FlatList, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Calendar, DateData, LocaleConfig } from 'react-native-calendars';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Setup Japanese Locale
 LocaleConfig.locales['jp'] = {
@@ -136,7 +136,7 @@ export default function ScheduleScreen() {
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>Schedule</Text>
+                <Text style={styles.headerTitle}>予定</Text>
             </View>
             <BannerAdComponent />
 
@@ -169,7 +169,7 @@ export default function ScheduleScreen() {
                     ListEmptyComponent={
                         <View style={styles.emptyState}>
                             <Text style={styles.emptyText}>予定はありません</Text>
-                            <Text style={styles.emptySubText}>マッチ画面からデートを計画しましょう！</Text>
+                            <Text style={styles.emptySubText}>チケット画面からデートを計画しましょう！</Text>
                         </View>
                     }
                 />

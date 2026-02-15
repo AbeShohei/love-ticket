@@ -22,9 +22,11 @@ export const MatchCard = ({ item, onPress, compact }: MatchCardProps) => {
 
             {/* Top Left Stamp */}
             <Image
-                source={item.type === 'star'
-                    ? require('@/assets/images/super_like_stamp.png')
-                    : require('@/assets/images/like_stamp.png')}
+                source={(() => {
+                    if (item.type === 'star') return require('@/assets/images/super_like_stamp.png');
+                    if (item.type === 'love' || item.type === 'right' as any) return require('@/assets/images/like_stamp.png');
+                    return require('@/assets/images/nope_stamp.png');
+                })()}
                 style={styles.topLeftStamp}
                 contentFit="contain"
             />
