@@ -1,17 +1,19 @@
 import { BannerAdComponent } from '@/components/Ads';
 import { CATEGORIES } from '@/constants/Presets';
-import { supabase } from '@/lib/supabase';
+import { api } from '@/convex/_generated/api';
 import { useAuth } from '@/providers/AuthProvider';
 import { useMatchStore } from '@/stores/matchStore';
 import { useSwipeStore } from '@/stores/swipeStore';
+import { fromConvexProposal, Proposal, ProposalCategory } from '@/types/Proposal';
 import { Ionicons } from '@expo/vector-icons';
 import MaskedView from '@react-native-masked-view/masked-view';
+import { useMutation, useQuery } from 'convex/react';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, Linking, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
@@ -34,9 +36,7 @@ const CARD_HEIGHT = SCREEN_HEIGHT - 90; // Fill screen height minus tab bar (app
 
 // Limits (Mock for now, should come from config/DB)
 const DAILY_LIKE_LIMIT = 10;
-const DAILY_SUPER_LIKE_LIMIT = 1;
-
-import { Proposal } from '@/types/Proposal';
+const DAILY_SUPER_LIKE_LIMIT = 3;
 
 type DailyUsage = {
   like_count: number;
@@ -44,18 +44,74 @@ type DailyUsage = {
   proposal_create_count: number;
 };
 
+// Ad data for interspersed ads
+const AD_DATA: Proposal[] = [
+  {
+    id: 'ad-1',
+    isAd: true,
+    title: 'Netflix 🍿',
+    description: '今週末は二人で映画三昧！最新作から不朽の名作まで、Netflixで忘れられない時間を。',
+    imageUrl: 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?q=80&w=600&h=900&auto=format&fit=crop',
+    category: 'other' as ProposalCategory,
+    url: 'https://www.netflix.com',
+    createdAt: Date.now(),
+  },
+  {
+    id: 'ad-2',
+    isAd: true,
+    title: 'Starbucks ☕',
+    description: 'ちょっと一息、季節の新作を。素敵な空間で、二人だけの会話を楽しんで。',
+    imageUrl: 'https://images.unsplash.com/photo-1544787210-282dd74b00d7?q=80&w=600&h=900&auto=format&fit=crop',
+    category: 'other' as ProposalCategory,
+    url: 'https://www.starbucks.co.jp',
+    createdAt: Date.now(),
+  }
+];
+
 export default function SwipeScreen() {
   const insets = useSafeAreaInsets();
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [dailyUsage, setDailyUsage] = useState<DailyUsage>({ like_count: 0, super_like_count: 0, proposal_create_count: 0 });
 
-  const { profile } = useAuth();
+  const { profile, couple, convexId } = useAuth();
   const router = useRouter();
   const params = useLocalSearchParams<{ retryId?: string }>();
   const addMatch = useMatchStore((state) => state.addMatch);
   const addSwipe = useSwipeStore((state) => state.addSwipe);
+
+  // Convex hooks
+  const swipableProposals = useQuery(
+    api.proposals.getSwipableForUser,
+    profile?.coupleId && convexId
+      ? { coupleId: profile.coupleId as any, userId: convexId }
+      : 'skip'
+  );
+
+  // Get couple info with partner
+  const coupleInfo = useQuery(
+    api.couples.getCoupleWithPartner,
+    profile?.id ? { clerkId: profile.id } : 'skip'
+  );
+
+  // Daily Usage from Convex
+  const today = new Date().toISOString().split('T')[0];
+  const dailyUsageData = useQuery(
+    api.users.getDailyUsage,
+    convexId ? { userId: convexId, date: today } : 'skip'
+  );
+
+  const dailyUsage: DailyUsage = useMemo(() => {
+    if (!dailyUsageData) return { like_count: 0, super_like_count: 0, proposal_create_count: 0 };
+    return {
+      like_count: dailyUsageData.likeCount,
+      super_like_count: dailyUsageData.superLikeCount,
+      proposal_create_count: dailyUsageData.proposalCreateCount,
+    };
+  }, [dailyUsageData]);
+
+  const incrementDailyUsage = useMutation(api.users.incrementDailyUsage);
+  const createSwipe = useMutation(api.swipes.createAndCheckMatch);
 
   // Swipe Animation Shared Values (Lifted for interactive buttons)
   const translateX = useSharedValue(0);
@@ -64,36 +120,34 @@ export default function SwipeScreen() {
   // Ref for the swipeable card
   const cardRef = useRef<any>(null);
 
-  // fetchData is now simpler
-  const fetchData = useCallback(async (isInitial = false) => {
-    // Only show full loading screen on initial load
-    if (isInitial) {
+  // Transform Convex data and inject ads
+  useEffect(() => {
+    // If query is skipped (no coupleId), wait for redirect
+    if (swipableProposals === undefined) {
       setLoading(true);
+      return;
     }
 
-    // Immediate load (mock)
-    const { MOCK_PROPOSALS, AD_MOCK_DATA } = require('@/constants/MockData');
+    // If no proposals, show empty state
+    if (swipableProposals.length === 0) {
+      setProposals([]);
+      setLoading(false);
+      return;
+    }
+
+    // Convert Convex proposals to frontend format
+    const convertedProposals: Proposal[] = swipableProposals.map(fromConvexProposal);
 
     // Inject Ads every 3 items
     const augmentedProposals: Proposal[] = [];
     let adCounter = 0;
-    MOCK_PROPOSALS.forEach((p: Proposal, index: number) => {
+    convertedProposals.forEach((p, index) => {
       augmentedProposals.push(p);
-      if ((index + 1) % 3 === 0) {
-        const adMock = AD_MOCK_DATA[adCounter % AD_MOCK_DATA.length];
-        augmentedProposals.push({
-          ...adMock,
-          created_by: 'admob'
-        });
+      if ((index + 1) % 3 === 0 && adCounter < 2) {
+        const adMock = AD_DATA[adCounter % AD_DATA.length];
+        augmentedProposals.push(adMock);
         adCounter++;
       }
-    });
-
-    setProposals(augmentedProposals);
-    setDailyUsage({
-      like_count: 3,
-      super_like_count: 0,
-      proposal_create_count: 1
     });
 
     // Handle retry/re-swipe from history
@@ -111,11 +165,7 @@ export default function SwipeScreen() {
     }
 
     setLoading(false);
-  }, [params.retryId]); // Added params.retryId to dependency
-
-  useEffect(() => {
-    fetchData(true);
-  }, [fetchData]);
+  }, [swipableProposals, params.retryId]);
 
   // Reset button highlights when cards change or are cleared
   useEffect(() => {
@@ -136,7 +186,15 @@ export default function SwipeScreen() {
       if (Platform.OS !== 'web') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
-      Alert.alert('Limit Reached', 'Daily limit reached!');
+      Alert.alert('制限に達しました', '本日のいいね数が上限に達しました。明日またお試しください！');
+      return;
+    }
+
+    if (direction === 'up' && dailyUsage.super_like_count >= DAILY_SUPER_LIKE_LIMIT) {
+      if (Platform.OS !== 'web') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
+      Alert.alert('制限に達しました', '本日の超いいね数が上限に達しました。');
       return;
     }
 
@@ -147,11 +205,13 @@ export default function SwipeScreen() {
     translateX.value = 0;
     translateY.value = 0;
 
-    // Update Usage Local
-    if (direction === 'right') {
-      setDailyUsage(prev => ({ ...prev, like_count: prev.like_count + 1 }));
-    } else if (direction === 'up') { // Super Like
-      setDailyUsage(prev => ({ ...prev, super_like_count: prev.super_like_count + 1 }));
+    // Update Usage in Convex
+    if (convexId) {
+      if (direction === 'right') {
+        incrementDailyUsage({ userId: convexId, type: 'like' });
+      } else if (direction === 'up') {
+        incrementDailyUsage({ userId: convexId, type: 'superLike' });
+      }
     }
 
     // activeProposal is already declared above
@@ -162,17 +222,50 @@ export default function SwipeScreen() {
       addSwipe({
         ...activeProposal,
         createdAt: activeProposal.createdAt || new Date(),
-        images: activeProposal.images || [activeProposal.image_url || 'https://placehold.co/600x400'],
+        images: activeProposal.images || [activeProposal.imageUrl || 'https://placehold.co/600x400'],
       } as any, direction);
     }
 
-    // Skip backend call for mock data and ads
-    if (activeProposal.id.startsWith('mock-') || activeProposal.isAd || activeProposal.id.startsWith('ad-')) {
-      console.log('Swiped mock or ad:', activeProposal.id, direction);
+    // Skip backend call for ads
+    if (activeProposal.isAd || activeProposal.id.startsWith('ad-')) {
+      console.log('Swiped ad:', activeProposal.id, direction);
+      return;
+    }
 
-      // Add to local match store
+    // Call Convex to record swipe and check for match
+    if (convexId && profile?.coupleId && coupleInfo?.partner) {
+      try {
+        const result = await createSwipe({
+          userId: convexId,
+          proposalId: activeProposal.id as any,
+          direction: direction === 'up' ? 'super_like' : direction as any,
+          coupleId: profile.coupleId as any,
+          partnerId: coupleInfo.partner._id,
+        });
+
+        // If matched, add to local match store
+        if (result.matched && (direction === 'right' || direction === 'up')) {
+          const image = activeProposal.images?.[0] || activeProposal.imageUrl || 'https://placehold.co/200x200';
+          addMatch({
+            id: activeProposal.id,
+            name: activeProposal.title,
+            image,
+            type: direction === 'right' ? 'love' : 'star',
+            bio: activeProposal.description,
+            location: activeProposal.location || 'Tokyo, Japan',
+            age: Math.floor(Math.random() * 5) + 20,
+            tags: [activeProposal.category],
+            price: activeProposal.price,
+            url: activeProposal.url,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to record swipe:', error);
+      }
+    } else {
+      // Offline mode or not paired - just add to local match store for likes
       if (direction === 'right' || direction === 'up') {
-        const image = activeProposal.images?.[0] || activeProposal.image_url || 'https://placehold.co/200x200';
+        const image = activeProposal.images?.[0] || activeProposal.imageUrl || 'https://placehold.co/200x200';
         addMatch({
           id: activeProposal.id,
           name: activeProposal.title,
@@ -180,23 +273,12 @@ export default function SwipeScreen() {
           type: direction === 'right' ? 'love' : 'star',
           bio: activeProposal.description,
           location: activeProposal.location || 'Tokyo, Japan',
-          age: Math.floor(Math.random() * 5) + 20, // Mock age 20-25
+          age: Math.floor(Math.random() * 5) + 20,
           tags: [activeProposal.category],
           price: activeProposal.price,
           url: activeProposal.url,
         });
       }
-      return;
-    }
-
-    const { error } = await supabase.from('swipes').insert({
-      proposal_id: activeProposal.id,
-      user_id: profile!.id,
-      direction: direction === 'up' ? 'super_like' : direction,
-    });
-
-    if (error) {
-      console.error('Swipe error', error);
     }
   };
 
@@ -238,8 +320,45 @@ export default function SwipeScreen() {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        {/* Removed loading delay */}
         <ActivityIndicator size="large" color="#fd297b" />
+        <Text style={styles.loadingText}>デート案を読み込み中...</Text>
+      </View>
+    );
+  }
+
+  // If not paired, redirect to pairing (fallback)
+  if (!profile?.coupleId) {
+    return (
+      <View style={styles.centerContainer}>
+        <Ionicons name="heart-outline" size={64} color="#ccc" />
+        <Text style={styles.emptyTitle}>ペアリングが必要です</Text>
+        <Text style={styles.emptySubtitle}>パートナーと連携してデートを始めましょう</Text>
+        <TouchableOpacity
+          style={styles.emptyButton}
+          onPress={() => router.replace('/pairing')}
+        >
+          <Text style={styles.emptyButtonText}>ペアリングへ</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // No more proposals to swipe
+  if (proposals.length === 0 || currentIndex >= proposals.length) {
+    return (
+      <View style={styles.centerContainer}>
+        <Ionicons name="checkmark-circle-outline" size={64} color="#4CAF50" />
+        <Text style={styles.emptyTitle}>全て確認済み！</Text>
+        <Text style={styles.emptySubtitle}>
+          新しいデート案が追加されるまでお待ちください{'\n'}
+          または自分でデート案を作成してみましょう
+        </Text>
+        <TouchableOpacity
+          style={styles.emptyButton}
+          onPress={() => router.push('/proposals/create')}
+        >
+          <Text style={styles.emptyButtonText}>デート案を作成</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -356,7 +475,7 @@ const AdCard = React.memo(({ item }: { item: Proposal }) => {
   return (
     <View style={styles.card}>
       <Image
-        source={{ uri: item.image_url || 'https://placehold.co/600x900/png?text=Sponsored' }}
+        source={{ uri: item.imageUrl || 'https://placehold.co/600x900/png?text=Sponsored' }}
         style={styles.cardImage}
         contentFit="cover"
       />
@@ -402,7 +521,7 @@ const Card = React.memo(({ item, isTop }: { item: Proposal, isTop: boolean }) =>
   }
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const images = item.images && item.images.length > 0 ? item.images : [item.image_url || 'https://placehold.co/600x800/png?text=Profile'];
+  const images = item.images && item.images.length > 0 ? item.images : [item.imageUrl || 'https://placehold.co/600x800/png?text=Profile'];
 
   const isAdult = item.category === 'adult';
   const isSinglePhoto = images.length <= 1;
@@ -496,17 +615,6 @@ const Card = React.memo(({ item, isTop }: { item: Proposal, isTop: boolean }) =>
       {/* Content Container - Rendered on top of the Gradient Blur */}
       <View style={[styles.cardContent, isExpanded && styles.cardContentExpanded]} pointerEvents="box-none">
 
-        {/* Toggle Button for Single Photo Accordion */}
-        {isSinglePhoto && (
-          <TouchableOpacity
-            style={styles.expandButton}
-            onPress={toggleExpand}
-            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-          >
-            <Ionicons name={isExpanded ? "chevron-down" : "chevron-up"} size={24} color="#fff" />
-          </TouchableOpacity>
-        )}
-
         {/* Pagination Dots - Only if multiple images */}
         {!isSinglePhoto && images.length > 1 && (
           <View style={styles.paginationContainer}>
@@ -535,6 +643,17 @@ const Card = React.memo(({ item, isTop }: { item: Proposal, isTop: boolean }) =>
             </View>
           )}
         </Animated.View>
+
+        {/* Toggle Button for Single Photo Accordion - Below tags */}
+        {isSinglePhoto && (
+          <TouchableOpacity
+            style={styles.expandButton}
+            onPress={toggleExpand}
+            hitSlop={{ top: 10, bottom: 10, left: 20, right: 20 }}
+          >
+            <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={20} color="rgba(255,255,255,0.8)" />
+          </TouchableOpacity>
+        )}
 
         {/* Detailed Description - Visible if multiple photos OR if expanded */}
         {(!isSinglePhoto || isExpanded) && (
@@ -742,6 +861,37 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#fff', // Base for empty/loading
+    padding: 24,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
+  },
+  emptyTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  emptyButton: {
+    backgroundColor: '#fd297b',
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 25,
+  },
+  emptyButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   cardContainer: {
     flex: 1,
@@ -811,16 +961,14 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   cardContentExpanded: {
-    paddingBottom: 40, // Reduced padding when expanded (scrolling might be needed but for now just fit)
-    backgroundColor: 'rgba(0,0,0,0.6)', // Darker background when expanded
-    top: '40%', // Take up more space
+    paddingBottom: 110,
   },
   expandButton: {
     alignSelf: 'center',
-    padding: 5,
-    marginBottom: 5,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 0,
+    marginTop: 2,
+    marginBottom: -4,
   },
   metaContainer: {
     marginTop: 10,

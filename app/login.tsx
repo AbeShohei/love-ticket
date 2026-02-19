@@ -1,50 +1,97 @@
+import { useOAuth } from '@clerk/clerk-expo';
+import { FontAwesome5 } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { supabase } from '../lib/supabase';
+import { useAuth } from '../providers/AuthProvider';
+
+// Warm up Android browser for OAuth
+WebBrowser.maybeCompleteAuthSession();
 
 export default function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const { signIn } = useAuth();
     const router = useRouter();
 
-    async function signInWithEmail() {
+    // Google OAuth
+    const { startOAuthFlow: startGoogleOAuth } = useOAuth({ strategy: 'oauth_google' });
+    // Apple OAuth
+    const { startOAuthFlow: startAppleOAuth } = useOAuth({ strategy: 'oauth_apple' });
+
+    async function handleSignIn() {
+        if (!email.trim() || !password.trim()) {
+            Alert.alert('エラー', 'メールアドレスとパスワードを入力してください');
+            return;
+        }
+
         if (Platform.OS !== 'web') {
             await Haptics.selectionAsync();
         }
         setLoading(true);
         try {
-            const { error } = await supabase.auth.signInWithPassword({
-                email,
-                password,
-            });
+            await signIn(email.trim(), password);
 
-            if (error) {
-                if (Platform.OS !== 'web') {
-                    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-                }
-                if (Platform.OS === 'web') {
-                    alert(error.message);
-                } else {
-                    Alert.alert('Login Failed', error.message);
-                }
-            } else {
-                if (Platform.OS !== 'web') {
-                    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                }
+            if (Platform.OS !== 'web') {
+                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             }
-        } catch (e: any) {
-            console.error(e);
+            // Navigation is handled by _layout.tsx when isSignedIn changes
+        } catch (error: any) {
+            if (Platform.OS !== 'web') {
+                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            }
+            const message = error.message || 'ログインに失敗しました';
             if (Platform.OS === 'web') {
-                alert('An unexpected error occurred: ' + e.message);
+                alert(message);
             } else {
-                Alert.alert('Error', e.message);
+                Alert.alert('ログインエラー', message);
             }
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function handleGoogleSignIn() {
+        if (Platform.OS !== 'web') {
+            await Haptics.selectionAsync();
+        }
+        setLoading(true);
+        try {
+            const { createdSessionId, setActive } = await startGoogleOAuth();
+
+            if (createdSessionId && setActive) {
+                await setActive({ session: createdSessionId });
+                // Navigation is handled by _layout.tsx
+            }
+        } catch (error: any) {
+            console.error('Google OAuth error:', error);
+            Alert.alert('エラー', 'Google ログインに失敗しました');
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function handleAppleSignIn() {
+        if (Platform.OS !== 'web') {
+            await Haptics.selectionAsync();
+        }
+        setLoading(true);
+        try {
+            const { createdSessionId, setActive } = await startAppleOAuth();
+
+            if (createdSessionId && setActive) {
+                await setActive({ session: createdSessionId });
+                // Navigation is handled by _layout.tsx
+            }
+        } catch (error: any) {
+            console.error('Apple OAuth error:', error);
+            Alert.alert('エラー', 'Apple ログインに失敗しました');
         } finally {
             setLoading(false);
         }
@@ -60,8 +107,20 @@ export default function Login() {
             <BlurView intensity={80} tint="light" style={StyleSheet.absoluteFillObject} />
 
             <View style={styles.content}>
-                <Text style={styles.title}>Love Ticket</Text>
-                <Text style={styles.subtitle}>ログインしてデートを始めましょう</Text>
+                {/* App Logo */}
+                <View style={styles.logoContainer}>
+                    <View style={styles.logoCircle}>
+                        <Image
+                            source={require('../assets/images/icon.png')}
+                            style={styles.logoImage}
+                            contentFit="contain"
+                        />
+                    </View>
+                </View>
+
+                {/* Title in script style */}
+                <Text style={styles.title}>LoveTicket</Text>
+                <Text style={styles.subtitle}>二人の特別な時間を、ここから</Text>
 
                 <View style={styles.inputContainer}>
                     <TextInput
@@ -71,6 +130,8 @@ export default function Login() {
                         value={email}
                         onChangeText={setEmail}
                         autoCapitalize="none"
+                        keyboardType="email-address"
+                        autoCorrect={false}
                     />
                     <TextInput
                         style={styles.input}
@@ -79,11 +140,12 @@ export default function Login() {
                         value={password}
                         onChangeText={setPassword}
                         secureTextEntry
+                        autoCapitalize="none"
                     />
                 </View>
 
                 <TouchableOpacity
-                    onPress={signInWithEmail}
+                    onPress={handleSignIn}
                     disabled={loading}
                     activeOpacity={0.8}
                     style={styles.buttonWrapper}
@@ -101,6 +163,34 @@ export default function Login() {
                         )}
                     </LinearGradient>
                 </TouchableOpacity>
+
+                {/* Divider */}
+                <View style={styles.divider}>
+                    <View style={styles.dividerLine} />
+                    <Text style={styles.dividerText}>または</Text>
+                    <View style={styles.dividerLine} />
+                </View>
+
+                {/* Social Login Buttons */}
+                <TouchableOpacity
+                    style={styles.socialButton}
+                    onPress={handleGoogleSignIn}
+                    disabled={loading}
+                >
+                    <FontAwesome5 name="google" size={18} color="#4285F4" style={styles.socialIcon} />
+                    <Text style={styles.socialButtonText}>Googleで続ける</Text>
+                </TouchableOpacity>
+
+                {Platform.OS === 'ios' && (
+                    <TouchableOpacity
+                        style={[styles.socialButton, styles.appleButton]}
+                        onPress={handleAppleSignIn}
+                        disabled={loading}
+                    >
+                        <FontAwesome5 name="apple" size={20} color="#fff" style={styles.socialIcon} />
+                        <Text style={[styles.socialButtonText, styles.appleButtonText]}>Appleで続ける</Text>
+                    </TouchableOpacity>
+                )}
 
                 <View style={styles.footer}>
                     <Text style={styles.footerText}>アカウントをお持ちでないですか？</Text>
@@ -125,9 +215,24 @@ const styles = StyleSheet.create({
         padding: 24,
         justifyContent: 'center',
     },
+    logoContainer: {
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    logoCircle: {
+        width: 120,
+        height: 120,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    logoImage: {
+        width: 120,
+        height: 120,
+        borderRadius: 24,
+    },
     title: {
         fontSize: 42,
-        fontWeight: 'bold',
+        fontFamily: 'HomemadeApple',
         color: '#FF4B4B',
         textAlign: 'center',
         marginBottom: 8,
@@ -136,15 +241,16 @@ const styles = StyleSheet.create({
         textShadowRadius: 2,
     },
     subtitle: {
-        fontSize: 18,
-        color: '#555',
+        fontSize: 16,
+        color: '#666',
         textAlign: 'center',
-        marginBottom: 48,
-        fontWeight: '500',
+        marginBottom: 40,
+        fontWeight: '400',
+        letterSpacing: 2,
     },
     inputContainer: {
         gap: 16,
-        marginBottom: 32,
+        marginBottom: 24,
     },
     input: {
         height: 56,
@@ -153,11 +259,11 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         paddingHorizontal: 20,
         fontSize: 16,
-        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
         color: '#333',
     },
     buttonWrapper: {
-        marginBottom: 24,
+        marginBottom: 20,
         shadowColor: '#FF4B4B',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.3,
@@ -173,21 +279,64 @@ const styles = StyleSheet.create({
     buttonText: {
         color: '#fff',
         fontSize: 18,
-        fontWeight: 'bold',
-        letterSpacing: 1,
+        fontWeight: '600',
+        letterSpacing: 2,
+    },
+    divider: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    dividerLine: {
+        flex: 1,
+        height: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    },
+    dividerText: {
+        color: '#999',
+        paddingHorizontal: 16,
+        fontSize: 14,
+    },
+    socialButton: {
+        height: 52,
+        borderRadius: 26,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+        borderWidth: 1,
+        borderColor: '#ddd',
+        flexDirection: 'row',
+        marginBottom: 12,
+        paddingHorizontal: 20,
+    },
+    socialButtonText: {
+        color: '#333',
+        fontSize: 16,
+        fontWeight: '500',
+    },
+    socialIcon: {
+        marginRight: 12,
+    },
+    appleButton: {
+        backgroundColor: '#000',
+        borderColor: '#000',
+    },
+    appleButtonText: {
+        color: '#fff',
     },
     footer: {
         flexDirection: 'row',
         justifyContent: 'center',
         gap: 8,
+        marginTop: 24,
     },
     footerText: {
-        color: '#555',
-        fontSize: 16,
+        color: '#666',
+        fontSize: 15,
     },
     link: {
         color: '#FF4B4B',
-        fontWeight: 'bold',
-        fontSize: 16,
+        fontWeight: '600',
+        fontSize: 15,
     },
 });

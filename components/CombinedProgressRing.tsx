@@ -46,9 +46,11 @@ export const CombinedProgressRing: React.FC<CombinedProgressRingProps> = ({
     const sentRatio = rings.sent.value / activityTotal;
     const receivedRatio = rings.received.value / activityTotal;
 
-    // Achievement success ratios (portion of the total circle for each side)
-    const sentSuccessRatio = (rings.sent.success || 0) / activityTotal;
-    const receivedSuccessRatio = (rings.received.success || 0) / activityTotal;
+    // Achievement ratio for outer ring (dates achieved / total)
+    const datesRatio = Math.min(rings.dates.value / Math.max(rings.dates.total, 1), 1);
+    // Split achieved evenly on both sides
+    const sentAchievedRatio = datesRatio / 2;
+    const receivedAchievedRatio = datesRatio / 2;
 
     // SVG Geometry
     const center = 150;
@@ -67,9 +69,9 @@ export const CombinedProgressRing: React.FC<CombinedProgressRingProps> = ({
         const springConfig = { damping: 20, stiffness: 90 };
         progressSent.value = withSpring(sentRatio, springConfig);
         progressReceived.value = withSpring(receivedRatio, springConfig);
-        progressOuterSent.value = withSpring(sentSuccessRatio, springConfig);
-        progressOuterReceived.value = withSpring(receivedSuccessRatio, springConfig);
-    }, [sentRatio, receivedRatio, sentSuccessRatio, receivedSuccessRatio]);
+        progressOuterSent.value = withSpring(sentAchievedRatio, springConfig);
+        progressOuterReceived.value = withSpring(receivedAchievedRatio, springConfig);
+    }, [sentRatio, receivedRatio, sentAchievedRatio, receivedAchievedRatio]);
 
     // Animated props
     // SENT side (Clockwise from top)
@@ -193,7 +195,7 @@ export const CombinedProgressRing: React.FC<CombinedProgressRingProps> = ({
 
                 <View style={styles.statItem}>
                     <View style={[styles.statDot, { backgroundColor: rings.dates.color }]} />
-                    <Text style={styles.statValue}>{(rings.sent.success || 0) + (rings.received.success || 0)}</Text>
+                    <Text style={styles.statValue}>{rings.dates.value}</Text>
                     <Text style={styles.statLabel}>達成</Text>
                 </View>
             </View>

@@ -1,7 +1,6 @@
 import { BannerAdComponent } from '@/components/Ads';
 import { MatchCard } from '@/components/MatchCard';
 import { useMatchStore } from '@/stores/matchStore';
-import { usePlanStore } from '@/stores/planStore';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,6 +8,10 @@ import React, { useMemo, useState } from 'react';
 import { Dimensions, FlatList, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Calendar, DateData, LocaleConfig } from 'react-native-calendars';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { useAuth } from '@/providers/AuthProvider';
+import { fromConvexProposal } from '@/types/Proposal';
 
 // Setup Japanese Locale
 LocaleConfig.locales['jp'] = {
@@ -30,10 +33,33 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 const appIcon = require('../../assets/images/icon.png');
 
 export default function ScheduleScreen() {
-    const plans = usePlanStore((state) => state.plans);
+    const { profile } = useAuth();
     const matches = useMatchStore((state) => state.matches);
     const [currentMonth, setCurrentMonth] = useState(new Date().toISOString().split('T')[0].slice(0, 7)); // YYYY-MM
     const [selectedPlan, setSelectedPlan] = useState<any>(null); // Plan to view details for
+
+    // Get plans from Convex
+    const convexPlans = useQuery(
+        api.plans.getConfirmedForCouple,
+        profile?.coupleId ? { coupleId: profile.coupleId } : 'skip'
+    );
+
+    // Convert Convex plans to local format
+    const plans = useMemo(() => {
+        if (!convexPlans) return [];
+        return convexPlans.map(p => ({
+            id: p._id,
+            title: p.title,
+            proposalIds: p.proposalIds,
+            proposals: p.proposals,
+            candidateSlots: p.candidateSlots,
+            finalDate: p.finalDate,
+            finalTime: p.finalTime,
+            meetingPlace: p.meetingPlace,
+            status: p.status,
+            createdAt: p.createdAt,
+        }));
+    }, [convexPlans]);
 
     // Filter confirmed plans
     const confirmedPlans = useMemo(() => {
@@ -84,6 +110,12 @@ export default function ScheduleScreen() {
     };
 
     const getPlanImage = (plan: any) => {
+        // Use Convex proposals if available
+        if (plan.proposals && plan.proposals.length > 0) {
+            const firstProposal = plan.proposals[0];
+            return firstProposal?.imageUrl || firstProposal?.images?.[0] || 'https://placehold.co/600x400';
+        }
+        // Fallback to local matches
         if (plan.proposalIds && plan.proposalIds.length > 0) {
             const firstMatch = matches.find(m => m.id === plan.proposalIds[0]);
             return firstMatch ? firstMatch.image : 'https://placehold.co/600x400';
@@ -136,7 +168,7 @@ export default function ScheduleScreen() {
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>予定</Text>
+                <Text style={styles.headerTitle}>スケジュール</Text>
             </View>
             <BannerAdComponent />
 
@@ -191,19 +223,26 @@ export default function ScheduleScreen() {
                             </TouchableOpacity>
                         </View>
                         <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalContent}>
-                            <Text style={styles.modalSectionTitle}>デートスポット ({selectedPlan.proposalIds.length})</Text>
-                            {selectedPlan.proposalIds.map((id: string) => {
-                                const match = matches.find(m => m.id === id);
-                                if (!match) return null;
+                            <Text style={styles.modalSectionTitle}>デートスポット ({(selectedPlan.proposals || []).length})</Text>
+                            {(selectedPlan.proposals || []).map((proposal: any) => {
+                                const imageUrl = proposal?.imageUrl || proposal?.images?.[0] || 'https://placehold.co/200x200';
                                 return (
-                                    <View key={id} style={{ marginBottom: 15 }}>
-                                        <MatchCard
-                                            item={match}
-                                            onPress={() => {
-                                                // Handle match press inside details if needed
-                                            }}
-                                            compact={false} // Show full details
-                                        />
+                                    <View key={proposal._id || proposal.id} style={{ marginBottom: 15 }}>
+                                        <View style={styles.proposalCard}>
+                                            <Image source={{ uri: imageUrl }} style={styles.proposalImage} />
+                                            <View style={styles.proposalInfo}>
+                                                <Text style={styles.proposalTitle}>{proposal.title}</Text>
+                                                {proposal.location && (
+                                                    <View style={styles.proposalMeta}>
+                                                        <Ionicons name="location" size={14} color="#666" />
+                                                        <Text style={styles.proposalMetaText}>{proposal.location}</Text>
+                                                    </View>
+                                                )}
+                                                {proposal.price && (
+                                                    <Text style={styles.proposalPrice}>{proposal.price}</Text>
+                                                )}
+                                            </View>
+                                        </View>
                                     </View>
                                 );
                             })}
@@ -421,5 +460,47 @@ const styles = StyleSheet.create({
         color: '#666',
         marginBottom: 15,
         marginTop: 10,
+    },
+    proposalCard: {
+        flexDirection: 'row',
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    proposalImage: {
+        width: 100,
+        height: 100,
+    },
+    proposalInfo: {
+        flex: 1,
+        padding: 12,
+        justifyContent: 'center',
+    },
+    proposalTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#333',
+        marginBottom: 4,
+    },
+    proposalMeta: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginTop: 4,
+    },
+    proposalMetaText: {
+        fontSize: 12,
+        color: '#666',
+    },
+    proposalPrice: {
+        fontSize: 14,
+        color: '#fd297b',
+        fontWeight: '600',
+        marginTop: 4,
     },
 });

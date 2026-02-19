@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(npx expo install:*)",
+      "Bash(npm install:*)",
+      "Bash(npx convex dev:*)",
+      "WebSearch",
+      "Bash(npx expo start:*)",
+      "Bash(curl:*)",
+      "Bash(echo:*)",
+      "Bash(xxd:*)",
+      "Bash(npx convex run:*)"
+    ]
+  }
+}

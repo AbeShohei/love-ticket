@@ -1,28 +1,30 @@
 {
   "expo": {
-    "name": "love-ticket",
+    "name": "Love Ticket",
     "slug": "love-ticket",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "loveticket",
+    "scheme": "love-ticket",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#FF4B4B"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.shokoi.loveticket"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#FF4B4B"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.shokoi.loveticket"
     },
     "web": {
       "bundler": "metro",
@@ -37,6 +39,12 @@
         {
           "androidAppId": "ca-app-pub-7370584857233870~1238293842",
           "iosAppId": "ca-app-pub-7370584857233870~1238293842"
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "このアプリはQRコードをスキャンしてパートナーとペアリングするためにカメラを使用します。"
         }
       ]
     ],

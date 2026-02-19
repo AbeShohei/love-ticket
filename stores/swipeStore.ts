@@ -13,6 +13,8 @@ export type SwipeRecord = {
 type SwipeState = {
     history: SwipeRecord[];
     addSwipe: (proposal: Proposal, direction: SwipeDirection) => void;
+    updateSwipeDirection: (id: string, direction: SwipeDirection) => void;
+    removeFromHistory: (id: string) => void;
     clearHistory: () => void;
 };
 
@@ -29,5 +31,15 @@ export const useSwipeStore = create<SwipeState>((set) => ({
                 ].slice(0, 50), // Keep last 50
             };
         }),
+    updateSwipeDirection: (id, direction) =>
+        set((state) => ({
+            history: state.history.map((record) =>
+                record.id === id ? { ...record, direction, timestamp: Date.now() } : record
+            ),
+        })),
+    removeFromHistory: (id) =>
+        set((state) => ({
+            history: state.history.filter((record) => record.id !== id),
+        })),
     clearHistory: () => set({ history: [] }),
 }));

@@ -1,13 +1,16 @@
 import { BannerAdComponent } from '@/components/Ads';
 import { CombinedProgressRing } from '@/components/CombinedProgressRing';
 import { NativeDateTimePicker } from '@/components/NativeDateTimePicker';
-import { PartnerActionSheet } from '@/components/PartnerActionSheet';
+import { ProfileEditModal } from '@/components/ProfileEditModal';
 import { SubscriptionBanner } from '@/components/SubscriptionBanner';
 import { SubscriptionModal } from '@/components/SubscriptionModal';
+import { api } from '@/convex/_generated/api';
+import { useAuth } from '@/providers/AuthProvider';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useMutation, useQuery } from 'convex/react';
 import * as Haptics from 'expo-haptics';
-import { LinearGradient } from 'expo-linear-gradient';
-import React, { useState } from 'react';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ActionSheetIOS, Alert, Dimensions, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -15,57 +18,230 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function ProfileScreen() {
     const insets = useSafeAreaInsets();
-    // Anniversary state (Local for now, defaults to 2024-01-01)
-    const [anniversaryDate, setAnniversaryDate] = useState(new Date('2024-01-01'));
-    const [showDatePicker, setShowDatePicker] = useState(false);
-    const [isPartnerSheetVisible, setIsPartnerSheetVisible] = useState(false);
-    const [isSubscriptionVisible, setIsSubscriptionVisible] = useState(false);
+    const { signOut, profile, userId, avatarUrl, displayName, convexId } = useAuth();
+    const router = useRouter();
 
-    const daysTogether = Math.max(0, Math.floor((new Date().getTime() - anniversaryDate.getTime()) / (1000 * 3600 * 24)));
+    // Convex mutations
+    const updateAnniversary = useMutation(api.users.updateAnniversary);
+    const leaveCoupleMutation = useMutation(api.couples.leaveCouple);
+
+    // Get couple info with partner
+    const coupleInfo = useQuery(
+        api.couples.getCoupleWithPartner,
+        userId ? { clerkId: userId } : 'skip'
+    );
+
+    // Get match stats from Convex - pass userId (Convex _id) since ConvexProvider doesn't provide auth tokens
+    const matchStats = useQuery(
+        api.matches.getStatsForCouple,
+        profile?.coupleId && profile?._id ? { coupleId: profile.coupleId, userId: profile._id } : 'skip'
+    );
+
+    // Anniversary state - initialize from profile
+    const [anniversaryDate, setAnniversaryDate] = useState(new Date());
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [isSubscriptionVisible, setIsSubscriptionVisible] = useState(false);
+    const [isProfileEditVisible, setIsProfileEditVisible] = useState(false);
+
+    // Debug logging
+    useEffect(() => {
+        console.log('[Profile] State:', {
+            userId,
+            profileCoupleId: profile?.coupleId,
+            coupleInfo,
+            matchStats
+        });
+    }, [userId, profile?.coupleId, coupleInfo, matchStats]);
+
+    // Check if paired - consider coupleInfo could be loading (undefined)
+    const isCoupleInfoLoading = coupleInfo === undefined;
+    const isPaired = !!profile?.coupleId && coupleInfo?.partner !== undefined && coupleInfo?.partner !== null;
+
+    // Load anniversary from profile
+    useEffect(() => {
+        if (profile?.anniversaryDate) {
+            setAnniversaryDate(new Date(profile.anniversaryDate));
+        }
+    }, [profile?.anniversaryDate]);
+
+    // Also save using profile.id (which is now clerkId)
+    const handleAnniversaryChangeWithProfile = async (newDate: Date) => {
+        setAnniversaryDate(newDate);
+        setShowDatePicker(false);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+        // Save to Convex - prefer userId from auth, fallback to profile.id
+        const clerkId = userId || profile?.id;
+        if (clerkId) {
+            try {
+                await updateAnniversary({
+                    clerkId: clerkId,
+                    anniversaryDate: newDate.getTime(),
+                });
+            } catch (error) {
+                console.error('Failed to save anniversary:', error);
+                Alert.alert('エラー', '記念日の保存に失敗しました');
+            }
+        }
+    };
+
+    const daysTogether = isPaired
+        ? Math.max(0, Math.floor((new Date().getTime() - anniversaryDate.getTime()) / (1000 * 3600 * 24)))
+        : 0;
+
+    // Real data for progress ring
+    const ringData = useMemo(() => {
+        if (!isPaired || !matchStats) {
+            return {
+                sent: { value: 0, total: 0, color: '#FF4B4B', success: 0 },
+                received: { value: 0, total: 0, color: '#54a0ff', success: 0 },
+                dates: { value: 0, total: 0, color: '#8854d0' }
+            };
+        }
+        return {
+            sent: { value: matchStats.sent || 0, total: 20, color: '#FF4B4B', success: matchStats.sentSuccess || 0 },
+            received: { value: matchStats.received || 0, total: 20, color: '#54a0ff', success: matchStats.receivedSuccess || 0 },
+            dates: { value: matchStats.completedDates || 0, total: 40, color: '#8854d0' }
+        };
+    }, [isPaired, matchStats]);
 
     const handlePress = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     };
 
-    const handleAnniversaryChange = (newDate: Date) => {
-        setAnniversaryDate(newDate);
-        setShowDatePicker(false);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const handleLogout = async () => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+
+        Alert.alert(
+            'ログアウト',
+            '本当にログアウトしますか？',
+            [
+                { text: 'キャンセル', style: 'cancel' },
+                {
+                    text: 'ログアウト',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await signOut();
+                            router.replace('/login');
+                        } catch (error) {
+                            console.error('Logout error:', error);
+                            Alert.alert('エラー', 'ログアウトに失敗しました');
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const handleBreakup = () => {
+        if (!profile?._id) return;
+
+        if (Platform.OS !== 'web') {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        }
+
+        const confirmBreakup = async () => {
+            // Second confirmation
+            Alert.alert(
+                '最終確認',
+                'この操作は取り消せません。\nデートの履歴やマッチデータは保持されますが、パートナーとの連携が解除されます。',
+                [
+                    { text: 'やめる', style: 'cancel' },
+                    {
+                        text: 'お別れする',
+                        style: 'destructive',
+                        onPress: async () => {
+                            try {
+                                await leaveCoupleMutation({ userId: profile!._id });
+                                if (Platform.OS !== 'web') {
+                                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                                }
+                                Alert.alert('完了', 'パートナーとの連携を解除しました');
+                            } catch (error) {
+                                console.error('Breakup error:', error);
+                                Alert.alert('エラー', '連携の解除に失敗しました');
+                            }
+                        }
+                    }
+                ]
+            );
+        };
+
+        Alert.alert(
+            'お別れをする',
+            `${coupleInfo?.partner?.displayName || 'パートナー'}との連携を解除しますか？`,
+            [
+                { text: 'キャンセル', style: 'cancel' },
+                {
+                    text: '続ける',
+                    style: 'destructive',
+                    onPress: confirmBreakup
+                }
+            ]
+        );
     };
 
     const showSettingsMenu = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
         if (Platform.OS === 'ios') {
+            const options = isPaired
+                ? ['キャンセル', '通知設定', 'プライバシー', 'ヘルプとサポート', 'お別れをする', 'ログアウト']
+                : ['キャンセル', '通知設定', 'プライバシー', 'ヘルプとサポート', 'ログアウト'];
+            const destructiveIndex = isPaired ? 4 : 4;
+            const logoutIndex = isPaired ? 5 : 4;
+
             ActionSheetIOS.showActionSheetWithOptions(
                 {
-                    options: ['キャンセル', '通知設定', 'プライバシー', 'ヘルプとサポート', 'ログアウト'],
-                    destructiveButtonIndex: 4,
+                    options,
+                    destructiveButtonIndex: destructiveIndex,
                     cancelButtonIndex: 0,
                     title: '設定',
                 },
                 (buttonIndex) => {
                     if (buttonIndex === 0) {
                         // Cancel
+                    } else if (isPaired && buttonIndex === 4) {
+                        handleBreakup();
+                    } else if (buttonIndex === logoutIndex) {
+                        handleLogout();
                     } else {
                         handlePress();
-                        // Handle other actions here
                     }
                 }
             );
         } else {
-            // Android alternative: Alert with buttons
+            const buttons: any[] = [
+                { text: '通知設定', onPress: handlePress },
+                { text: 'プライバシー', onPress: handlePress },
+                { text: 'ヘルプとサポート', onPress: handlePress },
+            ];
+            if (isPaired) {
+                buttons.push({ text: 'お別れをする', onPress: handleBreakup, style: 'destructive' });
+            }
+            buttons.push({ text: 'ログアウト', onPress: handleLogout, style: 'destructive' });
+            buttons.push({ text: 'キャンセル', style: 'cancel' });
+
             Alert.alert(
                 '設定',
                 'メニューを選択してください',
-                [
-                    { text: '通知設定', onPress: handlePress },
-                    { text: 'プライバシー', onPress: handlePress },
-                    { text: 'ヘルプとサポート', onPress: handlePress },
-                    { text: 'ログアウト', onPress: handlePress, style: 'destructive' },
-                    { text: 'キャンセル', style: 'cancel' },
-                ],
+                buttons,
                 { cancelable: true }
+            );
+        }
+    };
+
+    const handlePartnerPress = () => {
+        if (!isPaired) {
+            // Go to pairing screen if not paired
+            router.push('/pairing');
+        } else {
+            // Show partner info (could show unpair option)
+            Alert.alert(
+                'パートナー',
+                `${coupleInfo?.partner?.displayName || 'パートナー'}と連携中です`,
+                [{ text: 'OK' }]
             );
         }
     };
@@ -86,43 +262,66 @@ export default function ProfileScreen() {
                 </View>
 
                 {/* Couple Stats & Heart-Shaped Progress Ring */}
-                <View style={styles.statsContainer}>
-                    <CombinedProgressRing
-                        daysTogether={daysTogether}
-                        myAvatar="https://picsum.photos/seed/user1/400/400"
-                        partnerAvatar="https://picsum.photos/seed/user2/400/400"
-                        rings={{
-                            sent: { value: 12, total: 20, color: '#FF4B4B', success: 8 },
-                            received: { value: 8, total: 20, color: '#54a0ff', success: 4 },
-                            dates: { value: 12, total: 40, color: '#8854d0' }
-                        }}
-                    />
-                </View>
+                {isCoupleInfoLoading ? (
+                    <View style={styles.statsContainer}>
+                        <Text style={styles.loadingText}>読み込み中...</Text>
+                    </View>
+                ) : isPaired ? (
+                    <View style={styles.statsContainer}>
+                        <CombinedProgressRing
+                            daysTogether={daysTogether}
+                            myAvatar={avatarUrl || 'https://placehold.co/400x400'}
+                            partnerAvatar={coupleInfo?.partner?.avatarUrl || 'https://placehold.co/400x400'}
+                            rings={ringData}
+                        />
+                    </View>
+                ) : (
+                    <View style={styles.notPairedContainer}>
+                        <Ionicons name="heart-dislike-outline" size={64} color="#ccc" />
+                        <Text style={styles.notPairedTitle}>パートナーと連携していません</Text>
+                        <Text style={styles.notPairedSubtitle}>
+                            パートナーと連携すると、{"\n"}
+                            付き合った日数やデートの統計が表示されます
+                        </Text>
+                        <TouchableOpacity
+                            style={styles.pairButton}
+                            onPress={() => router.push('/pairing')}
+                        >
+                            <Text style={styles.pairButtonText}>パートナーと連携する</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
 
                 {/* Primary Actions Row */}
                 <View style={styles.actionsRow}>
                     <TouchableOpacity
                         style={styles.actionBtnContainer}
-                        onPress={() => setIsPartnerSheetVisible(true)}
+                        onPress={() => setIsProfileEditVisible(true)}
                     >
                         <View style={styles.glassBtnSmall}>
-                            <Ionicons name="people-outline" size={24} color="#7c8591" />
+                            <Ionicons name="person-outline" size={24} color="#7c8591" />
                         </View>
-                        <Text style={styles.actionLabel}>パートナー</Text>
+                        <Text style={styles.actionLabel}>プロフィール</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.actionBtnContainer}
+                        onPress={handlePartnerPress}
+                    >
+                        <View style={[styles.glassBtnSmall, !isPaired && styles.glassBtnHighlight]}>
+                            <Ionicons name={isPaired ? "people" : "people-outline"} size={24} color={isPaired ? "#FF4B4B" : "#7c8591"} />
+                        </View>
+                        <Text style={styles.actionLabel}>{isPaired ? 'パートナー' : '連携'}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
                         style={styles.actionBtnContainer}
                         onPress={() => setShowDatePicker(true)}
+                        disabled={!isPaired}
                     >
-                        <LinearGradient
-                            colors={['#FF4B4B', '#FF8F8F']}
-                            style={styles.mainActionBtn}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                        >
-                            <MaterialCommunityIcons name="calendar-heart" size={32} color="#fff" />
-                        </LinearGradient>
+                        <View style={styles.glassBtnSmall}>
+                            <MaterialCommunityIcons name="calendar-heart" size={24} color={isPaired ? "#FF4B4B" : "#7c8591"} />
+                        </View>
                         <Text style={styles.actionLabel}>記念日設定</Text>
                     </TouchableOpacity>
 
@@ -142,20 +341,19 @@ export default function ProfileScreen() {
             <NativeDateTimePicker
                 mode="date"
                 value={anniversaryDate}
-                onChange={handleAnniversaryChange}
+                onChange={handleAnniversaryChangeWithProfile}
                 show={showDatePicker}
                 onClose={() => setShowDatePicker(false)}
-            />
-
-            <PartnerActionSheet
-                visible={isPartnerSheetVisible}
-                onClose={() => setIsPartnerSheetVisible(false)}
-                userId="LT-777-BOND"
             />
 
             <SubscriptionModal
                 visible={isSubscriptionVisible}
                 onClose={() => setIsSubscriptionVisible(false)}
+            />
+
+            <ProfileEditModal
+                visible={isProfileEditVisible}
+                onClose={() => setIsProfileEditVisible(false)}
             />
         </View>
     );
@@ -178,6 +376,42 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         marginBottom: 32,
         marginTop: 20,
+    },
+    loadingText: {
+        fontSize: 16,
+        color: '#666',
+    },
+    notPairedContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 32,
+        marginTop: 20,
+        padding: 40,
+    },
+    notPairedTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#333',
+        marginTop: 16,
+        marginBottom: 8,
+    },
+    notPairedSubtitle: {
+        fontSize: 14,
+        color: '#666',
+        textAlign: 'center',
+        lineHeight: 22,
+        marginBottom: 24,
+    },
+    pairButton: {
+        backgroundColor: '#FF4B4B',
+        paddingHorizontal: 32,
+        paddingVertical: 14,
+        borderRadius: 25,
+    },
+    pairButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold',
     },
     actionsRow: {
         flexDirection: 'row',
@@ -205,6 +439,10 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.05,
         shadowRadius: 5,
         elevation: 2,
+    },
+    glassBtnHighlight: {
+        borderColor: '#FF4B4B',
+        borderWidth: 2,
     },
     mainActionBtn: {
         width: 76,

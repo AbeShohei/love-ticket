@@ -1,13 +1,15 @@
 import { MultiSelectCalendar } from '@/components/MultiSelectCalendar';
 import { CATEGORIES } from '@/constants/Presets';
+import { api } from '@/convex/_generated/api';
 import { useAuth } from '@/providers/AuthProvider';
 import { useMatchStore } from '@/stores/matchStore';
-import { CandidateSlot, usePlanStore } from '@/stores/planStore';
+import { CandidateSlot } from '@/stores/planStore';
 import { SwipeRecord, useSwipeStore } from '@/stores/swipeStore';
+import { fromConvexProposal } from '@/types/Proposal';
 import { Ionicons } from '@expo/vector-icons';
+import { useMutation, useQuery } from 'convex/react';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Dimensions, Modal, RefreshControl, ScrollView, SectionList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -20,21 +22,174 @@ import { NativeDateTimePicker } from '../../components/NativeDateTimePicker';
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
 export default function MatchesScreen() {
-  const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const { profile } = useAuth();
-  const matches = useMatchStore((state) => state.matches);
-  const history = useSwipeStore((state) => state.history);
-  const plans = usePlanStore((state) => state.plans);
-  const addPlan = usePlanStore((state) => state.addPlan);
-  const updatePlan = usePlanStore((state) => state.updatePlan);
+  const [loading, setLoading] = useState(false);
+  const { profile, convexId } = useAuth();
+  const localMatches = useMatchStore((state) => state.matches);
+  const localHistory = useSwipeStore((state) => state.history);
+  const updateSwipeDirection = useSwipeStore((state) => state.updateSwipeDirection);
+  const addMatch = useMatchStore((state) => state.addMatch);
 
-  const handleHistoryPress = (record: SwipeRecord) => {
-    router.push({
-      pathname: '/',
-      params: { retryId: record.id }
-    });
+  // Convex queries
+  const convexMatches = useQuery(
+    api.matches.getForCouple,
+    profile?.coupleId && convexId ? { coupleId: profile.coupleId, currentUserId: convexId } : 'skip'
+  );
+
+  const convexPlans = useQuery(
+    api.plans.getForCouple,
+    profile?.coupleId ? { coupleId: profile.coupleId } : 'skip'
+  );
+
+  const convexHistory = useQuery(
+    api.swipes.getHistory,
+    convexId ? { userId: convexId } : 'skip'
+  );
+
+  const createPlan = useMutation(api.plans.create);
+  const updatePlanMutation = useMutation(api.plans.update);
+  const updatePartnerDatesMutation = useMutation(api.matches.updatePartnerDates);
+
+  // Combine Convex matches with local matches (deduplicate by proposalId)
+  const matches = useMemo(() => {
+    const combined = [...localMatches];
+    const seenIds = new Set(combined.map(m => m.id));
+
+    if (convexMatches) {
+      convexMatches.forEach((m: any) => {
+        const proposalId = m.proposal?._id;
+        if (proposalId && !seenIds.has(proposalId)) {
+          seenIds.add(proposalId);
+          const proposal = m.proposal;
+          if (proposal) {
+            combined.push({
+              id: proposal._id,
+              name: proposal.title,
+              image: proposal.imageUrl || 'https://placehold.co/200x200',
+              type: (m.partnerDirection === 'super_like' || m.partnerDirection === 'up') ? 'star' : 'love',
+              timestamp: m.matchedAt,
+              candidateDates: proposal.candidateDates || [],
+              createdBy: proposal.createdBy,
+              bio: proposal.description,
+              location: proposal.location || '',
+              tags: [proposal.category],
+              price: proposal.price,
+              url: proposal.url,
+              partnerSelectedDates: m.partnerSelectedDates || [],
+            });
+          }
+        }
+      });
+    }
+
+    return combined;
+  }, [localMatches, convexMatches]);
+
+  // Convert Convex plans to local format
+  const plans = useMemo(() => {
+    if (!convexPlans) return [];
+    return convexPlans.map((p: any) => ({
+      id: p._id,
+      title: p.title,
+      proposalIds: p.proposalIds,
+      candidateSlots: p.candidateSlots,
+      finalDate: p.finalDate,
+      finalTime: p.finalTime,
+      meetingPlace: p.meetingPlace,
+      status: p.status,
+    }));
+  }, [convexPlans]);
+
+  // Combine Convex history with local history (deduplicate by proposalId)
+  const history = useMemo(() => {
+    const combined = [...localHistory];
+    const seenProposalIds = new Set(combined.map(h => h.proposal?.id).filter(Boolean));
+
+    if (convexHistory) {
+      convexHistory.forEach((h: any) => {
+        const proposalId = h.proposal?._id || h.proposalId;
+        if (!seenProposalIds.has(proposalId) && h.proposal) {
+          seenProposalIds.add(proposalId);
+          combined.push({
+            id: h._id,
+            proposal: fromConvexProposal(h.proposal),
+            direction: h.direction === 'super_like' ? 'up' : h.direction,
+            timestamp: h.createdAt,
+          });
+        }
+      });
+    }
+
+    // Sort by timestamp descending
+    return combined.sort((a, b) => b.timestamp - a.timestamp);
+  }, [localHistory, convexHistory]);
+
+  const handleHistoryItemPress = (record: SwipeRecord) => {
+    const proposal = record.proposal;
+    const currentDirection = record.direction;
+    const currentLabel = currentDirection === 'left' ? 'スキップ' : (currentDirection === 'up' ? '超いいね' : '気になる');
+
+    Alert.alert(
+      proposal.title,
+      `現在: ${currentLabel}`,
+      [
+        {
+          text: '気になる',
+          style: 'default',
+          onPress: () => {
+            updateSwipeDirection(record.id, 'right');
+            const image = proposal.images?.[0] || proposal.imageUrl || 'https://placehold.co/200x200';
+            addMatch({
+              id: proposal.id,
+              name: proposal.title,
+              image,
+              type: 'love',
+              bio: proposal.description,
+              location: proposal.location || 'Tokyo, Japan',
+              age: Math.floor(Math.random() * 5) + 20,
+              tags: [proposal.category],
+              price: proposal.price,
+              url: proposal.url,
+            });
+          },
+        },
+        {
+          text: '超いいね',
+          style: 'default',
+          onPress: () => {
+            updateSwipeDirection(record.id, 'up');
+            const image = proposal.images?.[0] || proposal.imageUrl || 'https://placehold.co/200x200';
+            addMatch({
+              id: proposal.id,
+              name: proposal.title,
+              image,
+              type: 'star',
+              bio: proposal.description,
+              location: proposal.location || 'Tokyo, Japan',
+              age: Math.floor(Math.random() * 5) + 20,
+              tags: [proposal.category],
+              price: proposal.price,
+              url: proposal.url,
+              candidateDates: proposal.candidateDates,
+              createdBy: proposal.createdBy,
+            });
+          },
+        },
+        {
+          text: 'スキップ',
+          style: 'default',
+          onPress: () => {
+            updateSwipeDirection(record.id, 'left');
+          },
+        },
+        {
+          text: 'キャンセル',
+          style: 'cancel',
+        },
+      ]
+    );
   };
+
+
 
   // Filter out matches that are already in a plan
   const visibleMatches = React.useMemo(() => {
@@ -71,6 +226,9 @@ export default function MatchesScreen() {
   useEffect(() => {
     fetchMatches();
   }, [fetchMatches]);
+
+
+
 
   // Grouping Logic
   const sections = React.useMemo(() => {
@@ -111,16 +269,27 @@ export default function MatchesScreen() {
     setOriginalMatchId(matchId);
     const match = matches.find(m => m.id === matchId);
     setPlanTitle(match ? `${match.name}のデート計画` : '新しいデート計画');
-    setSelectedDates([]); // Reset dates
 
-    // Mock: Set partner dates to tomorrow and day after tomorrow
-    const today = new Date();
-    const d1 = new Date(today); d1.setDate(d1.getDate() + 1);
-    const d2 = new Date(today); d2.setDate(d2.getDate() + 3); // Spaced out
-    setPartnerDates([
-      d1.toISOString().split('T')[0],
-      d2.toISOString().split('T')[0]
-    ]);
+    // Use candidateDates logic
+    if (match && match.createdBy === convexId) {
+      // I am the Creator
+      // My dates = candidateDates (fixed in proposal)
+      setSelectedDates(match.candidateDates || []);
+      // Partner dates = stored partnerSelectedDates
+      setPartnerDates(match.partnerSelectedDates || []);
+    } else if (match && match.candidateDates?.length > 0) {
+      // I am the Partner
+      // My dates = stored partnerSelectedDates (or empty if new)
+      setSelectedDates(match.partnerSelectedDates || []);
+      // Partner dates = candidateDates (from Creator)
+      setPartnerDates(match.candidateDates);
+    } else {
+      setSelectedDates([]);
+      setPartnerDates([]);
+    }
+
+
+
 
     setIsPlanningModalVisible(true);
     setEditingPlanId(null);
@@ -140,17 +309,13 @@ export default function MatchesScreen() {
     setOriginalMatchId(null); // No "original" match when editing a whole plan
 
     // Set existing dates
-    const existingDates = plan.candidateSlots.map(slot => slot.date);
+    const existingDates = plan.candidateSlots.map((slot: CandidateSlot) => slot.date);
+    // console.log('Existing Dates:', existingDates);
     setSelectedDates(existingDates);
 
-    // Mock partner dates (same logic as create)
-    const today = new Date();
-    const d1 = new Date(today); d1.setDate(d1.getDate() + 1);
-    const d2 = new Date(today); d2.setDate(d2.getDate() + 3);
-    setPartnerDates([
-      d1.toISOString().split('T')[0],
-      d2.toISOString().split('T')[0]
-    ]);
+    // Partner dates logic removed (mock data)
+    // In real app, we would fetch partner's candidate slots here if available
+    setPartnerDates([]);
 
     setIsPlanningModalVisible(true);
     setStep(1); // Auto start at 1, or logic to jump? Let's start at 1 for simplicity or check if confirmed.
@@ -169,7 +334,7 @@ export default function MatchesScreen() {
     }
   };
 
-  const handleNextStep = () => {
+  const handleNextStep = async () => {
     if (step === 1) {
       if (selectedMatchIds.length === 0) {
         Alert.alert('エラー', '最低1つの提案を選択してください');
@@ -181,6 +346,24 @@ export default function MatchesScreen() {
         Alert.alert('エラー', '候補日を最低1つ選択してください');
         return;
       }
+
+      // If I am the Partner (not Creator) and this is a single match negotiation, save my dates
+      if (originalMatchId) {
+        const match = matches.find(m => m.id === originalMatchId);
+        // If I am NOT the creator, these are MY selected dates, so save them to partnerSelectedDates
+        if (match && match.createdBy !== convexId) {
+          try {
+            await updatePartnerDatesMutation({
+              matchId: originalMatchId as any,
+              partnerSelectedDates: selectedDates,
+            });
+            // console.log('Saved partner dates:', selectedDates);
+          } catch (e) {
+            console.error('Failed to save partner dates', e);
+          }
+        }
+      }
+
       setStep(3);
     }
   };
@@ -189,7 +372,7 @@ export default function MatchesScreen() {
     if (step > 1) setStep(step - 1);
   };
 
-  const handleConfirmPlan = () => {
+  const handleConfirmPlan = async () => {
     if (!finalDate) {
       Alert.alert('エラー', '最終的な日付を選択してください');
       return;
@@ -199,32 +382,53 @@ export default function MatchesScreen() {
       return;
     }
 
+    if (!profile?.coupleId || !convexId) {
+      Alert.alert('エラー', 'ペアリングが必要です');
+      return;
+    }
 
-    const candidateSlots: CandidateSlot[] = selectedDates.map(date => ({
+    const candidateSlots: CandidateSlot[] = selectedDates.map((date: string) => ({
       date,
       time: '19:00', // Default time for slots
     }));
 
-    const planData = {
-      title: planTitle || '無題の計画',
-      proposalIds: selectedMatchIds,
-      candidateSlots: candidateSlots,
-      finalDate,
-      finalTime,
-      meetingPlace,
-      status: 'confirmed' as const,
-    };
+    try {
+      if (editingPlanId) {
+        // Update existing plan in Convex
+        await updatePlanMutation({
+          id: editingPlanId as any,
+          proposalIds: selectedMatchIds as any,
+          candidateSlots,
+          finalDate,
+          finalTime,
+          meetingPlace,
+          status: 'confirmed',
+        });
+        Alert.alert('更新', 'デート計画を確定しました！');
+      } else {
+        // Create new plan in Convex
+        await createPlan({
+          coupleId: profile.coupleId,
+          title: planTitle || '無題の計画',
+          proposalIds: selectedMatchIds as any,
+          candidateSlots,
+          createdBy: convexId,
+          status: 'confirmed',
+          finalDate: finalDate!,
+          finalTime: finalTime,
+          meetingPlace: meetingPlace,
+        });
 
-    if (editingPlanId) {
-      updatePlan(editingPlanId, planData);
-      Alert.alert('更新', 'デート計画を確定しました！');
-    } else {
-      addPlan({
-        ...planData,
-        status: 'confirmed',
-      });
-      Alert.alert('成功', 'デート計画を確定しました！');
+        // Then update it to confirmed with final details
+        // Note: We could combine this in a single mutation if needed
+
+        Alert.alert('成功', 'デート計画を確定しました！');
+      }
+    } catch (error) {
+      console.error('Failed to save plan:', error);
+      Alert.alert('エラー', '計画の保存に失敗しました');
     }
+
     setIsPlanningModalVisible(false);
   };
 
@@ -232,6 +436,13 @@ export default function MatchesScreen() {
   const commonDates = React.useMemo(() => {
     return selectedDates.filter(d => partnerDates.includes(d));
   }, [selectedDates, partnerDates]);
+
+  // Filter out matches that are in OTHER plans
+  const otherPlanProposalIds = React.useMemo(() => {
+    return new Set(plans
+      .filter(p => p.id !== editingPlanId)
+      .flatMap(p => p.proposalIds));
+  }, [plans, editingPlanId]);
 
   const handleAddProposal = (id: string) => {
     if (!selectedMatchIds.includes(id)) {
@@ -244,7 +455,7 @@ export default function MatchesScreen() {
   const renderMatchCard = ({ item }: { item: any }) => (
     <MatchCard
       item={item}
-      onPress={() => item.isHistory ? handleHistoryPress(item) : openPlanningModal(item.id)}
+      onPress={() => openPlanningModal(item.id)}
     />
   );
 
@@ -422,6 +633,7 @@ export default function MatchesScreen() {
                     const categoryMatches = matches
                       .filter(m =>
                         !selectedMatchIds.includes(m.id) &&
+                        !otherPlanProposalIds.has(m.id) &&
                         m.tags?.includes(category.id)
                       )
                       .sort((a, b) => {
@@ -599,75 +811,56 @@ export default function MatchesScreen() {
       <Modal
         visible={isHistoryBottomSheetVisible}
         animationType="slide"
-        transparent={true}
+        presentationStyle="pageSheet"
         onRequestClose={() => setIsHistoryBottomSheetVisible(false)}
       >
-        <View style={styles.bottomSheetOverlay}>
-          <TouchableOpacity
-            style={styles.bottomSheetCloseArea}
-            onPress={() => setIsHistoryBottomSheetVisible(false)}
-            activeOpacity={1}
-          />
-          <View style={styles.bottomSheetContent}>
-            <View style={styles.bottomSheetHeader}>
-              <View style={styles.bottomSheetHandle} />
-              <View style={styles.bottomSheetTitleContainer}>
-                <Ionicons name="time-outline" size={20} color="#333" />
-                <Text style={styles.bottomSheetTitle}>スワイプ履歴 (最近の20件)</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.bottomSheetCloseButton}
-                onPress={() => setIsHistoryBottomSheetVisible(false)}
-              >
-                <Ionicons name="close" size={24} color="#666" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView
-              style={styles.historyModalScroll}
-              contentContainerStyle={styles.historyModalContent}
-              showsVerticalScrollIndicator={false}
+        <View style={styles.bottomSheetContainer}>
+          <View style={styles.bottomSheetHeader}>
+            <View style={styles.bottomSheetHandle} />
+            <TouchableOpacity
+              style={styles.bottomSheetCloseIcon}
+              onPress={() => setIsHistoryBottomSheetVisible(false)}
             >
-              {history.length > 0 ? (
-                history.slice(0, 20).map((record) => (
-                  <View key={record.id} style={styles.historyItemWrapper}>
-                    <MatchCard
-                      item={{
-                        id: record.id,
-                        name: record.proposal.title,
-                        image: record.proposal.images?.[0] || record.proposal.image_url || 'https://placehold.co/200x200',
-                        type: (record.direction === 'left' ? 'nope' : (record.direction === 'up' ? 'star' : 'love')) as any,
-                        timestamp: record.timestamp,
-                        bio: record.proposal.description,
-                        location: record.proposal.location,
-                        tags: [record.proposal.category],
-                        price: record.proposal.price,
-                        url: record.proposal.url,
-                      } as any}
-                      onPress={() => {
-                        setIsHistoryBottomSheetVisible(false);
-                        handleHistoryPress(record);
-                      }}
-                    />
-                    <TouchableOpacity
-                      style={styles.reselectButton}
-                      onPress={() => {
-                        setIsHistoryBottomSheetVisible(false);
-                        handleHistoryPress(record);
-                      }}
-                    >
-                      <Ionicons name="refresh" size={16} color="#fd297b" />
-                      <Text style={styles.reselectButtonText}>選択しなおす</Text>
-                    </TouchableOpacity>
-                  </View>
-                ))
-              ) : (
-                <View style={styles.emptyHistory}>
-                  <Text style={styles.emptyHistoryText}>履歴がまだありません</Text>
-                </View>
-              )}
-            </ScrollView>
+              <Ionicons name="close" size={24} color="#C4CACC" />
+            </TouchableOpacity>
           </View>
+
+          <View style={styles.bottomSheetTitleRow}>
+            <Ionicons name="time-outline" size={20} color="#333" />
+            <Text style={styles.bottomSheetTitle}>スワイプ履歴</Text>
+          </View>
+
+          <ScrollView
+            style={styles.historyModalScroll}
+            contentContainerStyle={styles.historyModalContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {history.length > 0 ? (
+              history.slice(0, 20).map((record) => (
+                <View key={record.id} style={styles.historyItemWrapper}>
+                  <MatchCard
+                    item={{
+                      id: record.id,
+                      name: record.proposal.title,
+                      image: record.proposal.images?.[0] || record.proposal.imageUrl || 'https://placehold.co/200x200',
+                      type: (record.direction === 'left' ? 'nope' : (record.direction === 'up' ? 'star' : 'love')) as any,
+                      timestamp: record.timestamp,
+                      bio: record.proposal.description,
+                      location: record.proposal.location,
+                      tags: [record.proposal.category],
+                      price: record.proposal.price,
+                      url: record.proposal.url,
+                    } as any}
+                    onPress={() => handleHistoryItemPress(record)}
+                  />
+                </View>
+              ))
+            ) : (
+              <View style={styles.emptyHistory}>
+                <Text style={styles.emptyHistoryText}>履歴がまだありません</Text>
+              </View>
+            )}
+          </ScrollView>
         </View>
       </Modal>
     </View>
@@ -1166,49 +1359,39 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   // BottomSheet Styles
-  bottomSheetOverlay: {
+  bottomSheetContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  bottomSheetCloseArea: {
-    flex: 1,
-  },
-  bottomSheetContent: {
     backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    height: '80%',
-    paddingBottom: 40,
   },
   bottomSheetHeader: {
+    paddingVertical: 12,
     alignItems: 'center',
-    paddingTop: 12,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    position: 'relative',
   },
   bottomSheetHandle: {
-    width: 36,
+    width: 40,
     height: 5,
-    borderRadius: 3,
     backgroundColor: '#e0e0e0',
-    marginBottom: 16,
+    borderRadius: 3,
   },
-  bottomSheetTitleContainer: {
+  bottomSheetCloseIcon: {
+    position: 'absolute',
+    right: 20,
+    top: 12,
+  },
+  bottomSheetTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
   bottomSheetTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
-  },
-  bottomSheetCloseButton: {
-    position: 'absolute',
-    right: 20,
-    top: 25,
   },
   historyModalScroll: {
     flex: 1,
@@ -1231,24 +1414,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#f0f0f0',
-    paddingBottom: 12,
-  },
-  reselectButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fff',
-    paddingVertical: 8,
-    marginHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#fd297b',
-    gap: 6,
-  },
-  reselectButtonText: {
-    color: '#fd297b',
-    fontSize: 14,
-    fontWeight: 'bold',
   },
 });
 

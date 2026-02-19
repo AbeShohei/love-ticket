@@ -14,5 +14,9 @@
     ".expo/types/**/*.ts",
     "expo-env.d.ts",
     "expo-ui.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "convex"
   ]
 }

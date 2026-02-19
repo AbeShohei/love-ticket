@@ -1,5 +1,9 @@
 import { MultiSelectCalendar } from '@/components/MultiSelectCalendar';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
+import { useAuth } from '@/providers/AuthProvider';
 import { Ionicons } from '@expo/vector-icons';
+import { useMutation } from 'convex/react';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -20,10 +24,16 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CATEGORIES } from '../../constants/Presets';
-import { Proposal } from '../../types/Proposal';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SCREEN_HEIGHT = Dimensions.get('window').height;
+
+// Character Limits
+const TITLE_MAX = 40;
+const DESCRIPTION_MAX = 60;
+const LOCATION_MAX = 15;
+const URL_MAX = 50;
+const PRICE_MAX = 10;
 
 // Home Screen Card Dimensions
 const HOME_CARD_WIDTH = SCREEN_WIDTH;
@@ -37,6 +47,11 @@ export default function CreateProposal() {
     const router = useRouter();
     const params = useLocalSearchParams<{ category?: string }>();
     const insets = useSafeAreaInsets();
+    const { profile, convexId } = useAuth();
+
+    // Convex mutations
+    const createProposal = useMutation(api.proposals.create);
+    const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
 
     // Finds the initial category object based on param or defaults to first one
     const initialCategory = CATEGORIES.find(c => c.id === params.category) || CATEGORIES[0];
@@ -128,30 +143,70 @@ export default function CreateProposal() {
             return;
         }
 
+        if (!profile?.coupleId || !convexId) {
+            Alert.alert('エラー', 'ペアリングが必要です');
+            return;
+        }
+
         setLoading(true);
 
-        // Mock Submission
-        const newProposal: Proposal = {
-            id: Date.now().toString(),
-            title,
-            description,
-            images,
-            category: category as any,
-            location: location || undefined,
-            url: url || undefined,
-            price: price || undefined,
-            candidateDates: candidateDates.length > 0 ? candidateDates : undefined,
-            createdAt: new Date(),
-        };
+        try {
+            // Upload images to Convex storage
+            const storageIds: Id<"_storage">[] = [];
 
-        console.log('New Proposal Created:', JSON.stringify(newProposal, null, 2));
+            for (const imageUri of images) {
+                try {
+                    // Get upload URL from Convex
+                    const uploadUrl = await generateUploadUrl();
 
-        // Simulate network delay
-        setTimeout(() => {
+                    // Fetch the image as blob
+                    const response = await fetch(imageUri);
+                    const blob = await response.blob();
+
+                    // Upload to Convex storage
+                    const uploadResponse = await fetch(uploadUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': blob.type || 'image/jpeg',
+                        },
+                        body: blob,
+                    });
+
+                    if (uploadResponse.ok) {
+                        const { storageId } = await uploadResponse.json();
+                        if (storageId) {
+                            storageIds.push(storageId);
+                        }
+                    }
+                } catch (uploadError) {
+                    console.error('Failed to upload image:', uploadError);
+                    // Continue with other images
+                }
+            }
+
+            await createProposal({
+                coupleId: profile.coupleId,
+                title,
+                description: description || undefined,
+                imageStorageIds: storageIds.length > 0 ? storageIds : undefined,
+                images: storageIds.length === 0 ? images : undefined,
+                category: category as any,
+                location: location || undefined,
+                url: url || undefined,
+                price: price || undefined,
+                candidateDates: candidateDates.length > 0 ? candidateDates : undefined,
+                createdBy: convexId,
+            });
+
+            Alert.alert('成功', 'デート案を作成しました！', [
+                { text: 'OK', onPress: () => router.back() }
+            ]);
+        } catch (error) {
+            console.error('Failed to create proposal:', error);
+            Alert.alert('エラー', 'デート案の作成に失敗しました');
+        } finally {
             setLoading(false);
-            Alert.alert('成功', '提案を作成しました！(フロントエンドのみ)');
-            router.back();
-        }, 1000);
+        }
     };
 
     // Derived state for display logic
@@ -239,10 +294,23 @@ export default function CreateProposal() {
                             <LinearGradient
                                 colors={['transparent', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,0.9)']}
                                 style={styles.cardGradient}
+                                pointerEvents="box-none"
                             >
-                                {/* Title & Category (Page 1 Logic) */}
+                                {/* Title (always visible) */}
                                 {showTitle && (
                                     <>
+                                        <TextInput
+                                            style={styles.titleInput}
+                                            placeholder="タイトルを入力..."
+                                            placeholderTextColor="rgba(255,255,255,0.7)"
+                                            value={title}
+                                            onChangeText={setTitle}
+                                            multiline
+                                            maxLength={TITLE_MAX}
+                                            autoFocus={true}
+                                        />
+                                        <Text style={styles.charCount}>{title.length}/{TITLE_MAX}</Text>
+
                                         <View style={styles.categorySelector}>
                                             <View
                                                 style={[
@@ -260,24 +328,26 @@ export default function CreateProposal() {
                                                 </Text>
                                             </View>
                                         </View>
-
-                                        <TextInput
-                                            style={styles.titleInput}
-                                            placeholder="タイトルを入力..."
-                                            placeholderTextColor="rgba(255,255,255,0.7)"
-                                            value={title}
-                                            onChangeText={setTitle}
-                                            multiline
-                                            maxLength={40}
-                                            autoFocus={true}
-                                        />
                                     </>
                                 )}
 
-                                {/* Details (Page 2+ Logic, or Page 1 if single image) */}
+                                {/* Details: Description → Location → Price → URL */}
                                 {showDetails && (
                                     <View style={styles.detailsContainer}>
-                                        {/* Optional Fields Row - Vertical List */}
+                                        <View style={styles.descContainer}>
+                                            <TextInput
+                                                style={styles.descInput}
+                                                placeholder="詳細を入力してください..."
+                                                placeholderTextColor="rgba(255,255,255,0.7)"
+                                                value={description}
+                                                onChangeText={setDescription}
+                                                multiline
+                                                numberOfLines={3}
+                                                maxLength={DESCRIPTION_MAX}
+                                            />
+                                            <Text style={styles.descCharCount}>{description.length}/{DESCRIPTION_MAX}</Text>
+                                        </View>
+
                                         <View style={styles.metaList}>
                                             <View style={styles.metaInputRow}>
                                                 <Ionicons name="location" size={20} color="#fff" style={styles.metaIcon} />
@@ -287,7 +357,22 @@ export default function CreateProposal() {
                                                     placeholderTextColor="rgba(255,255,255,0.5)"
                                                     value={location}
                                                     onChangeText={setLocation}
+                                                    maxLength={LOCATION_MAX}
                                                 />
+                                                <Text style={styles.metaCharCount}>{location.length}/{LOCATION_MAX}</Text>
+                                            </View>
+
+                                            <View style={styles.metaInputRow}>
+                                                <Ionicons name="cash" size={20} color="#fff" style={styles.metaIcon} />
+                                                <TextInput
+                                                    style={styles.metaInput}
+                                                    placeholder="予算"
+                                                    placeholderTextColor="rgba(255,255,255,0.5)"
+                                                    value={price}
+                                                    onChangeText={setPrice}
+                                                    maxLength={PRICE_MAX}
+                                                />
+                                                <Text style={styles.metaCharCount}>{price.length}/{PRICE_MAX}</Text>
                                             </View>
 
                                             <View style={styles.metaInputRow}>
@@ -300,30 +385,10 @@ export default function CreateProposal() {
                                                     onChangeText={setUrl}
                                                     keyboardType="url"
                                                     autoCapitalize="none"
-                                                />
-                                            </View>
-
-                                            <View style={styles.metaInputRow}>
-                                                <Ionicons name="cash" size={20} color="#fff" style={styles.metaIcon} />
-                                                <TextInput
-                                                    style={styles.metaInput}
-                                                    placeholder="予算"
-                                                    placeholderTextColor="rgba(255,255,255,0.5)"
-                                                    value={price}
-                                                    onChangeText={setPrice}
+                                                    maxLength={URL_MAX}
                                                 />
                                             </View>
                                         </View>
-
-                                        <TextInput
-                                            style={styles.descInput}
-                                            placeholder="詳細を入力してください..."
-                                            placeholderTextColor="rgba(255,255,255,0.7)"
-                                            value={description}
-                                            onChangeText={setDescription}
-                                            multiline
-                                            numberOfLines={3}
-                                        />
                                     </View>
                                 )}
 
@@ -500,10 +565,16 @@ const styles = StyleSheet.create({
         fontSize: 28,
         fontWeight: 'bold',
         color: '#fff',
-        marginBottom: 12,
+        marginBottom: 4,
         textShadowColor: 'rgba(0, 0, 0, 0.5)',
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 4,
+    },
+    charCount: {
+        color: 'rgba(255,255,255,0.5)',
+        fontSize: 12,
+        marginBottom: 12,
+        textAlign: 'right',
     },
     detailsContainer: {
         width: '100%',
@@ -532,11 +603,28 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
     },
+    metaCharCount: {
+        color: 'rgba(255,255,255,0.5)',
+        fontSize: 11,
+        marginLeft: 8,
+    },
+    descContainer: {
+        position: 'relative',
+        marginBottom: 12,
+    },
     descInput: {
         fontSize: 16,
         color: 'rgba(255,255,255,0.9)',
         lineHeight: 24,
         minHeight: 80,
+    },
+    descCharCount: {
+        color: 'rgba(255,255,255,0.5)',
+        fontSize: 12,
+        textAlign: 'right',
+        position: 'absolute',
+        bottom: 4,
+        right: 0,
     },
     submitButton: {
         backgroundColor: '#FF4B4B',
