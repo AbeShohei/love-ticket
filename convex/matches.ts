@@ -246,25 +246,18 @@ export const getStatsForCouple = query({
     let sentAchieved = 0; // My proposals that were completed
     let receivedAchieved = 0; // Partner's proposals that were completed
 
-    console.log('[getStatsForCouple] Checking matches:', matches.length);
     for (const match of matches) {
-      console.log('[getStatsForCouple] Match:', match._id, 'status:', match.status, 'proposalId:', match.proposalId);
       if (match.status === "scheduled" || match.status === "completed") {
         const proposal = await ctx.db.get(match.proposalId);
-        console.log('[getStatsForCouple] Proposal:', proposal?._id, 'createdBy:', proposal?.createdBy);
         if (proposal) {
           if (proposal.createdBy === user!._id) {
             sentAchieved++;
-            console.log('[getStatsForCouple] -> sentAchieved++');
           } else if (partner && proposal.createdBy === partner._id) {
             receivedAchieved++;
-            console.log('[getStatsForCouple] -> receivedAchieved++');
           }
         }
       }
     }
-
-    console.log('[getStatsForCouple] sentAchieved:', sentAchieved, 'receivedAchieved:', receivedAchieved);
 
     // Also count confirmed plans by proposal creator
     const plans = await ctx.db

@@ -57,14 +57,13 @@ export default function MatchesScreen() {
     if (convexMatches) {
       convexMatches.forEach((m: any) => {
         const proposalId = m.proposal?._id;
-        // console.log('[Matches] Processing match:', m._id, 'PartnerDates:', m.partnerSelectedDates);
         if (proposalId && !seenIds.has(proposalId)) {
           seenIds.add(proposalId);
           const proposal = m.proposal;
           if (proposal) {
             combined.push({
               id: proposal._id,
-              convexMatchId: m._id, // Store Convex Match ID
+              convexMatchId: m._id,
               name: proposal.title,
               image: proposal.imageUrl || 'https://placehold.co/200x200',
               type: (m.partnerDirection === 'super_like' || m.partnerDirection === 'up') ? 'star' : 'love',
@@ -109,7 +108,6 @@ export default function MatchesScreen() {
     if (convexHistory) {
       convexHistory.forEach((h: any) => {
         const proposalId = h.proposal?._id || h.proposalId;
-        console.log('[Matches] Processing match:', h._id, 'Creator:', h.proposal?.createdBy, 'Dates:', h.proposal?.candidateDates);
         if (!seenProposalIds.has(proposalId) && h.proposal) {
           seenProposalIds.add(proposalId);
           combined.push({
@@ -309,21 +307,25 @@ export default function MatchesScreen() {
     setEditingPlanId(planId);
     setPlanTitle(plan.title);
     setSelectedMatchIds(plan.proposalIds);
-    setOriginalMatchId(null); // No "original" match when editing a whole plan
+    setOriginalMatchId(null);
 
-    // Set existing dates
     const existingDates = plan.candidateSlots.map((slot: CandidateSlot) => slot.date);
-    // console.log('Existing Dates:', existingDates);
     setSelectedDates(existingDates);
 
-    // Partner dates logic removed (mock data)
-    // In real app, we would fetch partner's candidate slots here if available
     setPartnerDates([]);
 
     setIsPlanningModalVisible(true);
-    setStep(1); // Auto start at 1, or logic to jump? Let's start at 1 for simplicity or check if confirmed.
-    // If we want to edit a confirmed plan, we might validly want to see the final details.
-    // usage: if (plan.status === 'confirmed') setStep(3); else setStep(1);
+    if (plan.status === 'confirmed') {
+      setStep(3);
+      setFinalDate(plan.finalDate || null);
+      setFinalTime(plan.finalTime || '');
+      setMeetingPlace(plan.meetingPlace || '');
+    } else {
+      setStep(1);
+      setFinalDate(null);
+      setFinalTime('');
+      setMeetingPlace('');
+    }
     if (plan.status === 'confirmed') {
       setStep(3);
       setFinalDate(plan.finalDate || null);
@@ -357,10 +359,9 @@ export default function MatchesScreen() {
         if (match && match.createdBy !== convexId && match.convexMatchId) {
           try {
             await updatePartnerDatesMutation({
-              matchId: match.convexMatchId as any, // Use correct Match ID
+              matchId: match.convexMatchId as any,
               partnerSelectedDates: selectedDates,
             });
-            // console.log('Saved partner dates:', selectedDates);
           } catch (e) {
             console.error('Failed to save partner dates', e);
           }

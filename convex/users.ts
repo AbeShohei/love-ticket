@@ -97,31 +97,14 @@ export const updateProfile = mutation({
     avatarStorageId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
-    console.log('[updateProfile] Called with clerkId:', args.clerkId);
-    console.log('[updateProfile] Args:', {
-      hasDisplayName: args.displayName !== undefined,
-      hasAvatarUrl: args.avatarUrl !== undefined,
-      hasStorageId: args.avatarStorageId !== undefined,
-      storageId: args.avatarStorageId
-    });
-    if (args.avatarUrl) {
-      console.log('[updateProfile] avatarUrl length:', args.avatarUrl.length);
-    }
-
     const user = await ctx.db
       .query("users")
       .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
       .first();
 
     if (!user) {
-      console.error('[updateProfile] User not found for clerkId:', args.clerkId);
       throw new Error("User not found");
     }
-
-    const textFields = {
-      displayName: args.displayName,
-      avatarUrl: args.avatarUrl,
-    };
 
     // Filter out undefined fields
     const updates: Record<string, any> = { updatedAt: Date.now() };

@@ -28,9 +28,7 @@ export const getByInviteCode = query({
 export const getById = query({
   args: { coupleId: v.id("couples") },
   handler: async (ctx, args) => {
-    console.log('[Convex] getById called with coupleId:', args.coupleId);
     const couple = await ctx.db.get(args.coupleId);
-    console.log('[Convex] getById result:', couple ? { id: couple._id, status: couple.status } : null);
 
     if (!couple) {
       return null;
@@ -55,7 +53,6 @@ export const create = mutation({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    console.log('[Convex] create called with userId:', args.userId);
     const now = Date.now();
     let inviteCode = generateInviteCode();
 
@@ -79,14 +76,12 @@ export const create = mutation({
       status: "pending",
       createdAt: now,
     });
-    console.log('[Convex] Created couple:', coupleId, 'with inviteCode:', inviteCode);
 
     // Update the user's coupleId
     await ctx.db.patch(args.userId, {
       coupleId,
       updatedAt: now,
     });
-    console.log('[Convex] Updated user coupleId:', args.userId, '->', coupleId);
 
     return { coupleId, inviteCode };
   },
@@ -99,8 +94,6 @@ export const join = mutation({
     inviteCode: v.string(),
   },
   handler: async (ctx, args) => {
-    console.log('[Convex] join called with userId:', args.userId, 'inviteCode:', args.inviteCode);
-
     const couple = await ctx.db
       .query("couples")
       .withIndex("by_invite_code", (q) =>
@@ -109,11 +102,8 @@ export const join = mutation({
       .first();
 
     if (!couple) {
-      console.log('[Convex] Couple not found for invite code:', args.inviteCode);
       throw new Error("無効な招待コードです");
     }
-
-    console.log('[Convex] Found couple:', couple._id, 'current status:', couple.status);
 
     // Update the user's coupleId
     const now = Date.now();
@@ -121,7 +111,6 @@ export const join = mutation({
       coupleId: couple._id,
       updatedAt: now,
     });
-    console.log('[Convex] Updated user coupleId:', args.userId, '->', couple._id);
 
     // Update couple status to active and set anniversary
     await ctx.db.patch(couple._id, {
@@ -129,9 +118,6 @@ export const join = mutation({
       activatedAt: now,
       anniversaryDate: now, // Set initial anniversary when joining
     });
-    console.log('[Convex] Updated couple status to active and set anniversary:', couple._id);
-
-
 
     return couple._id;
   },
