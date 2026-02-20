@@ -10,7 +10,6 @@ type Profile = {
     coupleId: Id<"couples"> | null;
     displayName: string | null;
     avatarUrl: string | null;
-    anniversaryDate?: number;
     subscriptionStatus?: "free" | "trial" | "active" | "expired";
 };
 
@@ -107,7 +106,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             coupleId: convexUser.coupleId || null,
             displayName: convexUser.displayName || null,
             avatarUrl: convexUser.avatarUrl || null,
-            anniversaryDate: convexUser.anniversaryDate,
             subscriptionStatus: convexUser.subscriptionStatus,
         };
     }, [convexUser]);
@@ -284,8 +282,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         isLoading: !isLoaded || isConvexLoading,
         userId: userData?.userId ?? null,
         email: userData?.email ?? null,
-        displayName: userData?.displayName ?? null,
-        avatarUrl: userData?.avatarUrl ?? null,
+        displayName: profile?.displayName ?? userData?.displayName ?? null,
+        avatarUrl: profile?.avatarUrl ?? userData?.avatarUrl ?? null,
         profile,
         convexId: convexUser?._id ?? null,
         couple,

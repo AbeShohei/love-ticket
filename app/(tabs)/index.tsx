@@ -350,15 +350,8 @@ export default function SwipeScreen() {
         <Ionicons name="checkmark-circle-outline" size={64} color="#4CAF50" />
         <Text style={styles.emptyTitle}>全て確認済み！</Text>
         <Text style={styles.emptySubtitle}>
-          新しいデート案が追加されるまでお待ちください{'\n'}
-          または自分でデート案を作成してみましょう
+          デート案をカタログから作成しましょう
         </Text>
-        <TouchableOpacity
-          style={styles.emptyButton}
-          onPress={() => router.push('/proposals/create')}
-        >
-          <Text style={styles.emptyButtonText}>デート案を作成</Text>
-        </TouchableOpacity>
       </View>
     );
   }
@@ -375,7 +368,7 @@ export default function SwipeScreen() {
               style={{ width: 80, height: 80, borderRadius: 40 }}
             />
           </View>
-          <Text style={styles.emptyText}>デート案が尽きました...</Text>
+
         </View>
 
         {/* Card Stack - Persistent rendering to avoid flashes */}

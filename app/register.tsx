@@ -82,16 +82,29 @@ export default function Register() {
     }
 
     // Handle verification code input
-    function handleCodeChange(text: string, index: number) {
+    const handleCodeChange = (text: string, index: number) => {
+        const cleanText = text.replace(/[^0-9]/g, '');
+
+        // Handle paste of 6-digit code
+        if (cleanText.length === 6) {
+            const newCode = cleanText.split('');
+            setVerificationCode(newCode);
+            Keyboard.dismiss();
+            return;
+        }
+
+        // Handle single digit input
         const newCode = [...verificationCode];
-        newCode[index] = text;
+        // Take the last character if multiple characters are entered (e.g. typing without selection)
+        // But excluding the full paste case handled above
+        newCode[index] = cleanText.slice(-1);
         setVerificationCode(newCode);
 
-        // Auto-advance to next input
-        if (text && index < 5) {
+        // Auto focus next input if a digit was entered
+        if (cleanText.slice(-1) && index < 5) {
             codeInputRefs.current[index + 1]?.focus();
         }
-    }
+    };
 
     function handleCodeKeyPress(key: string, index: number) {
         // Move back on backspace when field is empty
@@ -228,10 +241,10 @@ export default function Register() {
                                                 digit ? styles.codeInputFilled : null,
                                             ]}
                                             value={digit}
-                                            onChangeText={text => handleCodeChange(text.replace(/[^0-9]/g, ''), index)}
+                                            onChangeText={text => handleCodeChange(text, index)}
                                             onKeyPress={({ nativeEvent }) => handleCodeKeyPress(nativeEvent.key, index)}
                                             keyboardType="number-pad"
-                                            maxLength={1}
+                                            maxLength={6}
                                             autoFocus={index === 0}
                                             selectTextOnFocus
                                         />

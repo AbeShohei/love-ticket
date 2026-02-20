@@ -1,9 +1,10 @@
+import { api } from '@/convex/_generated/api';
 import { useAuth } from '@/providers/AuthProvider';
 import { Ionicons } from '@expo/vector-icons';
+import { useMutation } from 'convex/react';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -17,8 +18,6 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { useMutation } from 'convex/react';
-import { api } from '@/convex/_generated/api';
 
 type ProfileEditModalProps = {
     visible: boolean;
@@ -32,6 +31,7 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
     const [loading, setLoading] = useState(false);
 
     const updateProfile = useMutation(api.users.updateProfile);
+    const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
 
     useEffect(() => {
         if (visible) {
@@ -43,6 +43,7 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
     const pickImage = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
             allowsEditing: true,
             aspect: [1, 1],
             quality: 0.8,
@@ -79,10 +80,49 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
 
             console.log('[ProfileEdit] Updating profile for clerkId:', clerkId);
 
+            let storageId: string | undefined = undefined;
+
+            // Upload image if changed and new URI is local file
+            if (avatarUri && !avatarUri.startsWith('http')) {
+                console.log('[ProfileEdit] Starting image upload...');
+                try {
+                    // 1. Get upload URL
+                    const uploadUrl = await generateUploadUrl();
+                    console.log('[ProfileEdit] Got upload URL');
+
+                    // 2. Convert URI to Blob
+                    const response = await fetch(avatarUri);
+                    const blob = await response.blob();
+                    console.log('[ProfileEdit] Blob created:', blob.size, blob.type);
+
+                    // 3. Upload file
+                    const result = await fetch(uploadUrl, {
+                        method: "POST",
+                        headers: { "Content-Type": blob.type || 'image/jpeg' },
+                        body: blob,
+                    });
+
+                    if (!result.ok) {
+                        throw new Error(`Upload failed with status ${result.status}`);
+                    }
+
+                    const json = await result.json();
+                    storageId = json.storageId;
+                    console.log('[ProfileEdit] Upload successful, storageId:', storageId);
+                } catch (uploadError) {
+                    console.error('[ProfileEdit] Image upload failed:', uploadError);
+                    Alert.alert('エラー', '画像のアップロードに失敗しました。');
+                    setLoading(false);
+                    return;
+                }
+            }
+
+            console.log('[ProfileEdit] Calling updateProfile with storageId:', storageId);
             await updateProfile({
                 clerkId,
                 displayName: displayName.trim(),
-                avatarUrl: avatarUri || undefined,
+                avatarStorageId: storageId as any,
+                avatarUrl: storageId ? undefined : (avatarUri && avatarUri.startsWith('http') ? undefined : avatarUri || undefined),
             });
 
             console.log('[ProfileEdit] Profile updated successfully');
@@ -94,9 +134,10 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
             Alert.alert('成功', 'プロフィールを更新しました', [
                 { text: 'OK', onPress: onClose }
             ]);
-        } catch (error) {
+        } catch (error: any) {
             console.error('[ProfileEdit] Failed to update profile:', error);
-            Alert.alert('エラー', 'プロフィールの更新に失敗しました');
+            const errorMessage = error.message || '不明なエラーが発生しました';
+            Alert.alert('エラー', `プロフィールの更新に失敗しました: ${errorMessage}`);
         } finally {
             setLoading(false);
         }

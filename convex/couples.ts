@@ -101,36 +101,23 @@ export const join = mutation({
 
     console.log('[Convex] Found couple:', couple._id, 'current status:', couple.status);
 
-    // Update the user's coupleId and set anniversary to today
+    // Update the user's coupleId
     const now = Date.now();
     await ctx.db.patch(args.userId, {
       coupleId: couple._id,
-      anniversaryDate: now,
       updatedAt: now,
     });
     console.log('[Convex] Updated user coupleId:', args.userId, '->', couple._id);
 
-    // Update couple status to active
+    // Update couple status to active and set anniversary
     await ctx.db.patch(couple._id, {
       status: "active",
       activatedAt: now,
+      anniversaryDate: now, // Set initial anniversary when joining
     });
-    console.log('[Convex] Updated couple status to active:', couple._id);
+    console.log('[Convex] Updated couple status to active and set anniversary:', couple._id);
 
-    // Also set anniversary for the creator (other user in this couple)
-    const creator = await ctx.db
-      .query("users")
-      .withIndex("by_couple_id", (q) => q.eq("coupleId", couple._id))
-      .filter((q) => q.neq(q.field("_id"), args.userId))
-      .first();
 
-    if (creator && !creator.anniversaryDate) {
-      await ctx.db.patch(creator._id, {
-        anniversaryDate: now,
-        updatedAt: now,
-      });
-      console.log('[Convex] Set anniversary for creator:', creator._id);
-    }
 
     return couple._id;
   },
@@ -204,5 +191,19 @@ export const leaveCouple = mutation({
     }
 
     return { success: true };
+  },
+});
+
+// Update anniversary for a couple
+export const updateAnniversary = mutation({
+  args: {
+    coupleId: v.id("couples"),
+    anniversaryDate: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.coupleId, {
+      anniversaryDate: args.anniversaryDate,
+    });
+    return args.coupleId;
   },
 });

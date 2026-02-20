@@ -17,6 +17,7 @@ export type Match = {
   url?: string;
   createdBy?: string;
   partnerSelectedDates?: string[];
+  convexMatchId?: string;
 };
 
 type MatchState = {

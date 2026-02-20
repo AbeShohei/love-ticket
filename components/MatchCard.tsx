@@ -58,10 +58,12 @@ export const MatchCard = ({ item, onPress, compact }: MatchCardProps) => {
                     </View>
 
                     <View style={styles.metaContainer}>
-                        <View style={styles.metaRow}>
-                            <Ionicons name="location-sharp" size={12} color="rgba(255,255,255,0.7)" />
-                            <Text style={styles.metaText} numberOfLines={1}>{item.location || 'Tokyo, JP'}</Text>
-                        </View>
+                        {item.location && (
+                            <View style={styles.metaRow}>
+                                <Ionicons name="location-sharp" size={12} color="rgba(255,255,255,0.7)" />
+                                <Text style={styles.metaText} numberOfLines={1}>{item.location}</Text>
+                            </View>
+                        )}
                         {item.price && (
                             <View style={[styles.metaRow, compact && { display: 'none' }]}>
                                 <Ionicons name="cash-outline" size={12} color="rgba(255,255,255,0.7)" />
@@ -70,9 +72,11 @@ export const MatchCard = ({ item, onPress, compact }: MatchCardProps) => {
                         )}
                     </View>
 
-                    <Text style={[styles.bioText, compact && { display: 'none' }]} numberOfLines={2}>
-                        {item.bio || 'Recently matched! Start a conversation.'}
-                    </Text>
+                    {item.bio && (
+                        <Text style={[styles.bioText, compact && { display: 'none' }]} numberOfLines={2}>
+                            {item.bio}
+                        </Text>
+                    )}
 
                     {item.url && !compact && (
                         <TouchableOpacity onPress={() => Linking.openURL(item.url!)} style={styles.linkRow}>

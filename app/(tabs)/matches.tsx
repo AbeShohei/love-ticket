@@ -57,12 +57,14 @@ export default function MatchesScreen() {
     if (convexMatches) {
       convexMatches.forEach((m: any) => {
         const proposalId = m.proposal?._id;
+        // console.log('[Matches] Processing match:', m._id, 'PartnerDates:', m.partnerSelectedDates);
         if (proposalId && !seenIds.has(proposalId)) {
           seenIds.add(proposalId);
           const proposal = m.proposal;
           if (proposal) {
             combined.push({
               id: proposal._id,
+              convexMatchId: m._id, // Store Convex Match ID
               name: proposal.title,
               image: proposal.imageUrl || 'https://placehold.co/200x200',
               type: (m.partnerDirection === 'super_like' || m.partnerDirection === 'up') ? 'star' : 'love',
@@ -107,6 +109,7 @@ export default function MatchesScreen() {
     if (convexHistory) {
       convexHistory.forEach((h: any) => {
         const proposalId = h.proposal?._id || h.proposalId;
+        console.log('[Matches] Processing match:', h._id, 'Creator:', h.proposal?.createdBy, 'Dates:', h.proposal?.candidateDates);
         if (!seenProposalIds.has(proposalId) && h.proposal) {
           seenProposalIds.add(proposalId);
           combined.push({
@@ -144,7 +147,7 @@ export default function MatchesScreen() {
               image,
               type: 'love',
               bio: proposal.description,
-              location: proposal.location || 'Tokyo, Japan',
+              location: proposal.location || '',
               age: Math.floor(Math.random() * 5) + 20,
               tags: [proposal.category],
               price: proposal.price,
@@ -164,7 +167,7 @@ export default function MatchesScreen() {
               image,
               type: 'star',
               bio: proposal.description,
-              location: proposal.location || 'Tokyo, Japan',
+              location: proposal.location || '',
               age: Math.floor(Math.random() * 5) + 20,
               tags: [proposal.category],
               price: proposal.price,
@@ -277,12 +280,12 @@ export default function MatchesScreen() {
       setSelectedDates(match.candidateDates || []);
       // Partner dates = stored partnerSelectedDates
       setPartnerDates(match.partnerSelectedDates || []);
-    } else if (match && match.candidateDates?.length > 0) {
-      // I am the Partner
+    } else if (match) {
+      // I am the Partner (or it's a Preset/System proposal)
       // My dates = stored partnerSelectedDates (or empty if new)
       setSelectedDates(match.partnerSelectedDates || []);
       // Partner dates = candidateDates (from Creator)
-      setPartnerDates(match.candidateDates);
+      setPartnerDates(match.candidateDates || []);
     } else {
       setSelectedDates([]);
       setPartnerDates([]);
@@ -351,10 +354,10 @@ export default function MatchesScreen() {
       if (originalMatchId) {
         const match = matches.find(m => m.id === originalMatchId);
         // If I am NOT the creator, these are MY selected dates, so save them to partnerSelectedDates
-        if (match && match.createdBy !== convexId) {
+        if (match && match.createdBy !== convexId && match.convexMatchId) {
           try {
             await updatePartnerDatesMutation({
-              matchId: originalMatchId as any,
+              matchId: match.convexMatchId as any, // Use correct Match ID
               partnerSelectedDates: selectedDates,
             });
             // console.log('Saved partner dates:', selectedDates);
@@ -365,6 +368,33 @@ export default function MatchesScreen() {
       }
 
       setStep(3);
+    }
+  };
+
+  const handleTemporarySave = async () => {
+    if (step !== 2) return;
+
+    if (selectedDates.length === 0) {
+      Alert.alert('エラー', '候補日を最低1つ選択してください');
+      return;
+    }
+
+    if (originalMatchId) {
+      const match = matches.find(m => m.id === originalMatchId);
+      if (match && match.createdBy !== convexId && match.convexMatchId) {
+        try {
+          await updatePartnerDatesMutation({
+            matchId: match.convexMatchId as any,
+            partnerSelectedDates: selectedDates,
+          });
+          Alert.alert('保存', '候補日を一時保存しました');
+        } catch (e) {
+          console.error('Failed to save partner dates', e);
+          Alert.alert('エラー', '保存に失敗しました');
+        }
+      } else {
+        Alert.alert('エラー', '保存対象が見つかりません');
+      }
     }
   };
 
@@ -548,15 +578,23 @@ export default function MatchesScreen() {
               {/* Progress Tracker Title */}
 
 
-              {step < 3 ? (
-                <TouchableOpacity onPress={handleNextStep} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                  <Text style={styles.modalSaveText}>次へ</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity onPress={handleConfirmPlan} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                  <Text style={styles.modalSaveText}>確定</Text>
-                </TouchableOpacity>
-              )}
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                {step === 2 && (
+                  <TouchableOpacity onPress={handleTemporarySave} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ marginRight: 16 }}>
+                    <Text style={{ fontSize: 16, fontWeight: '600', color: '#666' }}>一時保存</Text>
+                  </TouchableOpacity>
+                )}
+
+                {step < 3 ? (
+                  <TouchableOpacity onPress={handleNextStep} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <Text style={styles.modalSaveText}>次へ</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity onPress={handleConfirmPlan} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <Text style={styles.modalSaveText}>確定</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
 
             {/* Progress Tracker */}

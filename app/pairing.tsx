@@ -51,7 +51,7 @@ export default function Pairing() {
     if (isActive && !redirectAttempted.current) {
       console.log('[Pairing] ✅ ACTIVE status detected! Redirecting...');
       redirectAttempted.current = true;
-      router.replace('/' as any);
+      router.replace('/(tabs)/profile');
     }
   }, [coupleData, existingCouple, router]);
 
@@ -97,7 +97,7 @@ export default function Pairing() {
     setLoading(true);
     try {
       await joinCouple({ userId: profile!._id, inviteCode: code });
-      router.replace('/' as any);
+      router.replace('/(tabs)/profile');
     } catch (error) {
       console.error('Failed to join couple:', error);
       Alert.alert('エラー', '無効な招待コードです');
@@ -281,21 +281,6 @@ export default function Pairing() {
             パートナーから受け取ったQRコードをスキャンするか、招待コードを入力してください。
           </Text>
 
-          {/* QR Scanner Button */}
-          <TouchableOpacity
-            style={styles.qrScanButton}
-            onPress={() => setShowQRScanner(true)}
-          >
-            <ScanLine size={24} color="#fd297b" />
-            <Text style={styles.qrScanButtonText}>QRコードをスキャン</Text>
-          </TouchableOpacity>
-
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>または</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
           <TextInput
             style={styles.input}
             placeholder="招待コードを入力 (例: A1B2C3)"
@@ -311,6 +296,21 @@ export default function Pairing() {
             disabled={loading || !inviteCode}
           >
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>カップルに参加する</Text>}
+          </TouchableOpacity>
+
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>または</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* QR Scanner Button */}
+          <TouchableOpacity
+            style={styles.qrScanButton}
+            onPress={() => setShowQRScanner(true)}
+          >
+            <ScanLine size={24} color="#fd297b" />
+            <Text style={styles.qrScanButtonText}>QRコードをスキャン</Text>
           </TouchableOpacity>
         </View>
       )}

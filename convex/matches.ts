@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { api } from "./_generated/api";
 import { mutation, query } from "./_generated/server";
 
 // Get matches for a couple
@@ -6,6 +7,7 @@ export const getForCouple = query({
   args: {
     coupleId: v.id("couples"),
     currentUserId: v.optional(v.id("users")),
+    clerkId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const matches = await ctx.db
@@ -78,6 +80,30 @@ export const createFromMutualSwipe = mutation({
       status: "matched",
     });
 
+    // Notify the partner
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity) {
+      const users = await ctx.db
+        .query("users")
+        .withIndex("by_couple_id", (q) => q.eq("coupleId", args.coupleId))
+        .collect();
+
+      const partner = users.find(u => u.clerkId !== identity.subject);
+
+      if (partner && partner.pushToken) {
+        const proposal = await ctx.db.get(args.proposalId);
+        const title = "マッチトしました！"; // "Matched!"
+        const body = proposal ? `「${proposal.title}」でお互いの行きたいが一致しました！` : "新しいマッチが成立しました！";
+
+        await ctx.scheduler.runAfter(0, api.actions.notifications.sendPush, {
+          pushToken: partner.pushToken,
+          title,
+          body,
+          data: { url: '/matches' }
+        });
+      }
+    }
+
     return matchId;
   },
 });
@@ -148,6 +174,7 @@ export const getStatsForCouple = query({
   args: {
     coupleId: v.id("couples"),
     userId: v.optional(v.id("users")),
+    clerkId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     let user = null;

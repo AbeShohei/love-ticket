@@ -22,7 +22,7 @@ export default function ProfileScreen() {
     const router = useRouter();
 
     // Convex mutations
-    const updateAnniversary = useMutation(api.users.updateAnniversary);
+    const updateAnniversary = useMutation(api.couples.updateAnniversary);
     const leaveCoupleMutation = useMutation(api.couples.leaveCouple);
 
     // Get couple info with partner
@@ -57,12 +57,12 @@ export default function ProfileScreen() {
     const isCoupleInfoLoading = coupleInfo === undefined;
     const isPaired = !!profile?.coupleId && coupleInfo?.partner !== undefined && coupleInfo?.partner !== null;
 
-    // Load anniversary from profile
+    // Load anniversary from coupleInfo
     useEffect(() => {
-        if (profile?.anniversaryDate) {
-            setAnniversaryDate(new Date(profile.anniversaryDate));
+        if (coupleInfo?.couple?.anniversaryDate) {
+            setAnniversaryDate(new Date(coupleInfo.couple.anniversaryDate));
         }
-    }, [profile?.anniversaryDate]);
+    }, [coupleInfo?.couple?.anniversaryDate]);
 
     // Also save using profile.id (which is now clerkId)
     const handleAnniversaryChangeWithProfile = async (newDate: Date) => {
@@ -70,12 +70,12 @@ export default function ProfileScreen() {
         setShowDatePicker(false);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-        // Save to Convex - prefer userId from auth, fallback to profile.id
-        const clerkId = userId || profile?.id;
-        if (clerkId) {
+        // Save to Convex - prefer coupleId from profile
+        const coupleId = profile?.coupleId;
+        if (coupleId) {
             try {
                 await updateAnniversary({
-                    clerkId: clerkId,
+                    coupleId: coupleId,
                     anniversaryDate: newDate.getTime(),
                 });
             } catch (error) {

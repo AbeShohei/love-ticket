@@ -8,8 +8,8 @@ export default defineSchema({
     email: v.string(),
     displayName: v.optional(v.string()),
     avatarUrl: v.optional(v.string()),
+    avatarStorageId: v.optional(v.id("_storage")),
     coupleId: v.optional(v.id("couples")),
-    anniversaryDate: v.optional(v.number()), // Anniversary timestamp
     subscriptionStatus: v.optional(v.union(
       v.literal("free"),
       v.literal("trial"),
@@ -21,6 +21,7 @@ export default defineSchema({
       v.literal("yearly")
     )),
     subscriptionExpiry: v.optional(v.number()),
+    pushToken: v.optional(v.string()), // Expo push token
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_clerk_id", ["clerkId"])
@@ -35,6 +36,7 @@ export default defineSchema({
     ),
     createdAt: v.number(),
     activatedAt: v.optional(v.number()),
+    anniversaryDate: v.optional(v.number()), // Anniversary timestamp shared by the couple
   }).index("by_invite_code", ["inviteCode"]),
 
   // Proposals table (date ideas)

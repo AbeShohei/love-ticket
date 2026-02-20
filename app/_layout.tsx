@@ -78,11 +78,16 @@ export default function RootLayout() {
   );
 }
 
+import { usePushNotifications } from '@/components/PushNotificationHandler';
+
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
   const { isSignedIn, isLoading, profile } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+
+  // Initialize Push Notifications
+  usePushNotifications();
 
   // Auth + Pairing redirect logic
   useEffect(() => {
@@ -94,23 +99,33 @@ function RootLayoutNav() {
 
     const inAuthGroup = segments[0] === 'login' || segments[0] === 'register';
     const inPairing = segments[0] === 'pairing' || segments[0] === 'pair';
+    const inProfileSetup = segments[0] === 'profile-setup';
 
     if (!isSignedIn && !inAuthGroup) {
       // Not signed in - redirect to login
       router.replace('/login');
     } else if (isSignedIn && profile) {
       // User is signed in and profile is loaded
+      const hasAvatar = !!profile.avatarUrl;
       const isPaired = !!profile.coupleId;
 
       if (inAuthGroup) {
         // On auth screens after login
         if (isPaired) {
           router.replace('/' as any);
+        } else if (!hasAvatar) {
+          router.replace('/profile-setup');
         } else {
           router.replace('/pairing');
         }
-      } else if (!inPairing && !isPaired) {
+      } else if (!hasAvatar && !inProfileSetup) {
+        // No avatar - redirect to profile setup
+        router.replace('/profile-setup');
+      } else if (hasAvatar && !isPaired && !inPairing && !inProfileSetup) {
         // Trying to access app without pairing
+        router.replace('/pairing');
+      } else if (hasAvatar && !isPaired && inProfileSetup) {
+        // User finished setup (has avatar) but still on setup screen -> go to pairing
         router.replace('/pairing');
       }
     }
@@ -134,6 +149,7 @@ function RootLayoutNav() {
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="register" options={{ headerShown: false }} />
         <Stack.Screen name="pairing" options={{ headerShown: false, gestureEnabled: false }} />
+        <Stack.Screen name="profile-setup" options={{ headerShown: false, gestureEnabled: false }} />
       </Stack>
     </ThemeProvider>
   );

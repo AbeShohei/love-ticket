@@ -1,14 +1,20 @@
-import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { mutation, query } from "./_generated/server";
 
 // Get user by Clerk ID
 export const getByClerkId = query({
   args: { clerkId: v.string() },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const user = await ctx.db
       .query("users")
       .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
       .first();
+
+    if (user && user.avatarStorageId) {
+      user.avatarUrl = (await ctx.storage.getUrl(user.avatarStorageId)) || user.avatarUrl;
+    }
+
+    return user;
   },
 });
 
@@ -16,7 +22,13 @@ export const getByClerkId = query({
 export const getById = query({
   args: { id: v.id("users") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id);
+    const user = await ctx.db.get(args.id);
+
+    if (user && user.avatarStorageId) {
+      user.avatarUrl = (await ctx.storage.getUrl(user.avatarStorageId)) || user.avatarUrl;
+    }
+
+    return user;
   },
 });
 
@@ -24,10 +36,19 @@ export const getById = query({
 export const getByCoupleId = query({
   args: { coupleId: v.id("couples") },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const users = await ctx.db
       .query("users")
       .withIndex("by_couple_id", (q) => q.eq("coupleId", args.coupleId))
       .collect();
+
+    for (const user of users) {
+      if (user.avatarStorageId) {
+        user.avatarUrl = (await ctx.storage.getUrl(user.avatarStorageId)) || user.avatarUrl;
+      }
+    }
+
+    return users;
+
   },
 });
 
@@ -38,6 +59,7 @@ export const create = mutation({
     email: v.string(),
     displayName: v.optional(v.string()),
     avatarUrl: v.optional(v.string()),
+    avatarStorageId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -58,6 +80,7 @@ export const create = mutation({
       email: args.email,
       displayName: args.displayName,
       avatarUrl: args.avatarUrl,
+      avatarStorageId: args.avatarStorageId,
       subscriptionStatus: "free",
       createdAt: now,
       updatedAt: now,
@@ -71,22 +94,42 @@ export const updateProfile = mutation({
     clerkId: v.string(),
     displayName: v.optional(v.string()),
     avatarUrl: v.optional(v.string()),
+    avatarStorageId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
+    console.log('[updateProfile] Called with clerkId:', args.clerkId);
+    console.log('[updateProfile] Args:', {
+      hasDisplayName: args.displayName !== undefined,
+      hasAvatarUrl: args.avatarUrl !== undefined,
+      hasStorageId: args.avatarStorageId !== undefined,
+      storageId: args.avatarStorageId
+    });
+    if (args.avatarUrl) {
+      console.log('[updateProfile] avatarUrl length:', args.avatarUrl.length);
+    }
+
     const user = await ctx.db
       .query("users")
       .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
       .first();
 
     if (!user) {
+      console.error('[updateProfile] User not found for clerkId:', args.clerkId);
       throw new Error("User not found");
     }
 
-    await ctx.db.patch(user._id, {
+    const textFields = {
       displayName: args.displayName,
       avatarUrl: args.avatarUrl,
-      updatedAt: Date.now(),
-    });
+    };
+
+    // Filter out undefined fields
+    const updates: Record<string, any> = { updatedAt: Date.now() };
+    if (args.displayName !== undefined) updates.displayName = args.displayName;
+    if (args.avatarUrl !== undefined) updates.avatarUrl = args.avatarUrl;
+    if (args.avatarStorageId !== undefined) updates.avatarStorageId = args.avatarStorageId;
+
+    await ctx.db.patch(user._id, updates);
 
     return user._id;
   },
@@ -110,6 +153,33 @@ export const updateCouple = mutation({
 
     await ctx.db.patch(user._id, {
       coupleId: args.coupleId,
+      updatedAt: Date.now(),
+    });
+
+    return user._id;
+  },
+});
+
+// Update user's push token
+export const updatePushToken = mutation({
+  args: { pushToken: v.string() },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthenticated");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    await ctx.db.patch(user._id, {
+      pushToken: args.pushToken,
       updatedAt: Date.now(),
     });
 
@@ -141,30 +211,7 @@ export const hasEntitlement = query({
   },
 });
 
-// Update anniversary date
-export const updateAnniversary = mutation({
-  args: {
-    clerkId: v.string(),
-    anniversaryDate: v.number(), // timestamp
-  },
-  handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .first();
 
-    if (!user) {
-      throw new Error("User not found");
-    }
-
-    await ctx.db.patch(user._id, {
-      anniversaryDate: args.anniversaryDate,
-      updatedAt: Date.now(),
-    });
-
-    return user._id;
-  },
-});
 
 // Get daily usage for a user
 export const getDailyUsage = query({

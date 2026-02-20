@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { api } from "./_generated/api";
 import { mutation, query } from "./_generated/server";
 
 // Get plans for a couple
@@ -68,7 +69,7 @@ export const create = mutation({
     meetingPlace: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("plans", {
+    const planId = await ctx.db.insert("plans", {
       coupleId: args.coupleId,
       title: args.title,
       proposalIds: args.proposalIds,
@@ -80,6 +81,28 @@ export const create = mutation({
       createdBy: args.createdBy,
       createdAt: Date.now(),
     });
+
+    // Notify partner if confirmed
+    if (args.status === "confirmed") {
+      const users = await ctx.db
+        .query("users")
+        .withIndex("by_couple_id", (q) => q.eq("coupleId", args.coupleId))
+        .collect();
+
+      const partner = users.find(u => u._id !== args.createdBy);
+
+      if (partner && partner.pushToken) {
+        const dateStr = args.finalDate ? new Date(args.finalDate).toLocaleDateString() : '';
+        await ctx.scheduler.runAfter(0, api.actions.notifications.sendPush, {
+          pushToken: partner.pushToken,
+          title: "デートプランが確定しました！",
+          body: `「${args.title}」の日程が決まりました！${dateStr}`,
+          data: { url: '/matches' }
+        });
+      }
+    }
+
+    return planId;
   },
 });
 
@@ -111,6 +134,33 @@ export const update = mutation({
     );
 
     await ctx.db.patch(id, cleanUpdates);
+
+    // Notify partner if confirmed
+    if (args.status === "confirmed") {
+        const identity = await ctx.auth.getUserIdentity();
+        if (identity) {
+            const plan = await ctx.db.get(id);
+            if (plan) {
+                const users = await ctx.db
+                    .query("users")
+                    .withIndex("by_couple_id", (q) => q.eq("coupleId", plan.coupleId))
+                    .collect();
+
+                const partner = users.find(u => u.clerkId !== identity.subject);
+                
+                if (partner && partner.pushToken) {
+                    const dateStr = args.finalDate ? new Date(args.finalDate).toLocaleDateString() : '';
+                    await ctx.scheduler.runAfter(0, api.actions.notifications.sendPush, {
+                        pushToken: partner.pushToken,
+                        title: "デートプランが確定しました！",
+                        body: `「${plan.title}」の日程が決まりました！${dateStr}`, // Use plan.title as title might not be in args
+                        data: { url: '/matches' }
+                    });
+                }
+            }
+        }
+    }
+
     return id;
   },
 });

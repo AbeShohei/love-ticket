@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as actions_notifications from "../actions/notifications.js";
 import type * as couples from "../couples.js";
 import type * as dailyUsage from "../dailyUsage.js";
 import type * as matches from "../matches.js";
@@ -25,6 +26,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "actions/notifications": typeof actions_notifications;
   couples: typeof couples;
   dailyUsage: typeof dailyUsage;
   matches: typeof matches;

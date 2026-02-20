@@ -1,6 +1,6 @@
 import { useUser } from '@clerk/clerk-expo';
 import { useMutation, useQuery } from 'convex/react';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../convex/_generated/api';
 import { Id } from '../convex/_generated/dataModel';
 
@@ -45,17 +45,17 @@ export function useConvexUser() {
 
         // Update profile if needed (only if user has new data from Clerk)
         const clerkDisplayName = user.fullName || user.username || user.firstName || undefined;
-        const clerkAvatarUrl = user.imageUrl || undefined;
+        // Don't sync avatar from Clerk - we want users to set it manually
+        // const clerkAvatarUrl = user.imageUrl || undefined;
 
         if (convexUser && (
-          (clerkDisplayName && convexUser.displayName !== clerkDisplayName) ||
-          (clerkAvatarUrl && convexUser.avatarUrl !== clerkAvatarUrl)
+          (clerkDisplayName && convexUser.displayName !== clerkDisplayName)
         )) {
           try {
             await updateUser({
               clerkId: user.id,
               displayName: clerkDisplayName,
-              avatarUrl: clerkAvatarUrl,
+              // avatarUrl: clerkAvatarUrl,
             });
             console.log('[ConvexUser] Updated profile for:', user.id);
           } catch (error) {
@@ -75,13 +75,14 @@ export function useConvexUser() {
       try {
         // Handle Apple Sign In which may not provide email/name
         const email = user.primaryEmailAddress?.emailAddress ||
-                      user.emailAddresses?.[0]?.emailAddress ||
-                      `user_${user.id.slice(0, 8)}@placeholder.local`;
+          user.emailAddresses?.[0]?.emailAddress ||
+          `user_${user.id.slice(0, 8)}@placeholder.local`;
 
         const displayName = user.fullName || user.username || user.firstName ||
-                           `User${user.id.slice(0, 4)}`;
+          `User${user.id.slice(0, 4)}`;
 
-        const avatarUrl = user.imageUrl || undefined;
+        // Don't specific avatarUrl on create - let user set it in profile setup
+        // const avatarUrl = user.imageUrl || undefined;
 
         console.log('[ConvexUser] Creating user with:', {
           clerkId: user.id,
@@ -93,7 +94,7 @@ export function useConvexUser() {
           clerkId: user.id,
           email: email,
           displayName: displayName,
-          avatarUrl: avatarUrl,
+          // avatarUrl: avatarUrl,
         });
         console.log('[ConvexUser] Created Convex user for:', user.id);
       } catch (error) {
