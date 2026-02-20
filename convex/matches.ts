@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { api } from "./_generated/api";
+import { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
 
 // Get matches for a couple
@@ -195,55 +196,109 @@ export const getStatsForCouple = query({
       }
     }
 
+    // Return default stats if user not found
     if (!user) {
-      return { sent: 0, sentSuccess: 0, received: 0, receivedSuccess: 0, completedDates: 0 };
+      return {
+        sent: 0,
+        sentTotal: 1,
+        received: 0,
+        receivedTotal: 1,
+        completedDates: 0,
+        totalMatches: 5,
+      };
     }
 
-    // Get all proposals for the couple
-    const proposals = await ctx.db
-      .query("proposals")
+    // Get partner info
+    const coupleUsers = await ctx.db
+      .query("users")
       .withIndex("by_couple_id", (q) => q.eq("coupleId", args.coupleId))
       .collect();
 
-    // Get all matches for the couple (used for achieved count)
+    const partner = coupleUsers.find(u => u._id !== user!._id);
+
+    // Count proposals created by each user
+    const myProposals = await ctx.db
+      .query("proposals")
+      .withIndex("by_created_by", (q) => q.eq("createdBy", user!._id))
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .collect();
+
+    const partnerProposals = partner
+      ? await ctx.db
+          .query("proposals")
+          .withIndex("by_created_by", (q) => q.eq("createdBy", partner._id))
+          .filter((q) => q.eq(q.field("isActive"), true))
+          .collect()
+      : [];
+
+    // Sent = proposals I created, Received = proposals partner created
+    const sentCount = myProposals.length;
+    const receivedCount = partnerProposals.length;
+    const totalProposals = sentCount + receivedCount; // Total for ring ratio
+
+    // Get all matches for the couple (for achievement ring)
     const matches = await ctx.db
       .query("matches")
       .withIndex("by_couple_id", (q) => q.eq("coupleId", args.coupleId))
       .collect();
 
-    // Sent: Proposals created by me
-    const sentProposals = proposals.filter(p => p.createdBy === user!._id);
-    const sent = sentProposals.length;
+    // Count completed matches by proposal creator
+    let sentAchieved = 0; // My proposals that were completed
+    let receivedAchieved = 0; // Partner's proposals that were completed
 
-    // Received: Proposals created by partner (not me)
-    const receivedProposals = proposals.filter(p => p.createdBy !== user!._id && p.createdBy !== undefined);
-    const received = receivedProposals.length;
+    console.log('[getStatsForCouple] Checking matches:', matches.length);
+    for (const match of matches) {
+      console.log('[getStatsForCouple] Match:', match._id, 'status:', match.status, 'proposalId:', match.proposalId);
+      if (match.status === "scheduled" || match.status === "completed") {
+        const proposal = await ctx.db.get(match.proposalId);
+        console.log('[getStatsForCouple] Proposal:', proposal?._id, 'createdBy:', proposal?.createdBy);
+        if (proposal) {
+          if (proposal.createdBy === user!._id) {
+            sentAchieved++;
+            console.log('[getStatsForCouple] -> sentAchieved++');
+          } else if (partner && proposal.createdBy === partner._id) {
+            receivedAchieved++;
+            console.log('[getStatsForCouple] -> receivedAchieved++');
+          }
+        }
+      }
+    }
 
-    // Achieved: Scheduled or Completed matches (not just "matched")
-    const achieved = matches.filter(m => m.status === "scheduled" || m.status === "completed").length;
+    console.log('[getStatsForCouple] sentAchieved:', sentAchieved, 'receivedAchieved:', receivedAchieved);
 
-    // Also count confirmed plans
+    // Also count confirmed plans by proposal creator
     const plans = await ctx.db
       .query("plans")
       .withIndex("by_couple_id", (q) => q.eq("coupleId", args.coupleId))
       .collect();
-    const confirmedPlans = plans.filter(p => p.status === "confirmed").length;
 
-    const totalAchieved = achieved + confirmedPlans;
+    for (const plan of plans) {
+      if (plan.status === "confirmed") {
+        // Check each proposal in the plan
+        for (const proposalId of plan.proposalIds) {
+          const proposal = await ctx.db.get(proposalId as Id<"proposals">);
+          if (proposal && proposal.createdBy) {
+            if (proposal.createdBy === user!._id) {
+              sentAchieved++;
+            } else if (partner && proposal.createdBy === partner._id) {
+              receivedAchieved++;
+            }
+          }
+        }
+      }
+    }
 
-    // Calculating success rates
-    const sentProposalIds = new Set(sentProposals.map(p => p._id));
-    const receivedProposalIds = new Set(receivedProposals.map(p => p._id));
-
-    const sentSuccess = matches.filter(m => sentProposalIds.has(m.proposalId)).length;
-    const receivedSuccess = matches.filter(m => receivedProposalIds.has(m.proposalId)).length;
+    const totalAchieved = sentAchieved + receivedAchieved;
 
     return {
-      sent,
-      sentSuccess,
-      received,
-      receivedSuccess,
+      sent: sentCount,
+      sentTotal: Math.max(totalProposals, 1), // Ring ratio: my proposals / total proposals
+      received: receivedCount,
+      receivedTotal: Math.max(totalProposals, 1), // Ring ratio: partner proposals / total proposals
       completedDates: totalAchieved,
+      totalMatches: Math.max(matches.length, 1), // Ring ratio: completed / total matches
+      sentAchieved, // My proposals that were completed
+      receivedAchieved, // Partner's proposals that were completed
     };
   },
 });

@@ -34,19 +34,19 @@ export default function Pairing() {
   // Check if already paired
   const existingCouple = useQuery(
     api.couples.getById,
-    profile?.coupleId ? { id: profile.coupleId } : 'skip'
+    profile?.coupleId ? { coupleId: profile.coupleId } : 'skip'
   );
 
   // Watch for partner joining (when couple becomes active)
   const coupleData = useQuery(
     api.couples.getById,
-    createdCoupleId ? { id: createdCoupleId } : 'skip'
+    createdCoupleId ? { coupleId: createdCoupleId } : 'skip'
   );
 
   // Combined redirect check - use any source for active status
   useEffect(() => {
-    const isActive = coupleData?.status === 'active' ||
-      existingCouple?.status === 'active';
+    const isActive = coupleData?.couple?.status === 'active' ||
+      existingCouple?.couple?.status === 'active';
 
     if (isActive && !redirectAttempted.current) {
       console.log('[Pairing] ✅ ACTIVE status detected! Redirecting...');
@@ -155,7 +155,7 @@ export default function Pairing() {
 
   if (generatedCode) {
     // Show status for debugging - use any available source
-    const statusText = coupleData?.status || existingCouple?.status || 'loading';
+    const statusText = coupleData?.couple?.status || existingCouple?.couple?.status || 'loading';
     const isStatusActive = statusText === 'active';
 
     return (

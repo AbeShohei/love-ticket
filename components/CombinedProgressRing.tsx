@@ -22,6 +22,8 @@ interface CombinedProgressRingProps {
         sent: RingData;
         received: RingData;
         dates: RingData;
+        sentAchieved: RingData;
+        receivedAchieved: RingData;
     };
     daysTogether: number;
     myAvatar: string;
@@ -41,16 +43,13 @@ export const CombinedProgressRing: React.FC<CombinedProgressRingProps> = ({
     const innerStrokeWidth = 24;
 
     // Proportions
-    // Inner activity ratios (Sent vs Received)
-    const activityTotal = Math.max(rings.sent.value + rings.received.value, 1);
-    const sentRatio = rings.sent.value / activityTotal;
-    const receivedRatio = rings.received.value / activityTotal;
+    const sentRatio = rings.sent.value / Math.max(rings.sent.total, 1);
+    const receivedRatio = rings.received.value / Math.max(rings.received.total, 1);
+    const achievementRatio = rings.dates.value / Math.max(rings.dates.total, 1);
 
-    // Achievement ratio for outer ring (dates achieved / total)
-    const datesRatio = Math.min(rings.dates.value / Math.max(rings.dates.total, 1), 1);
-    // Split achieved evenly on both sides
-    const sentAchievedRatio = datesRatio / 2;
-    const receivedAchievedRatio = datesRatio / 2;
+    // Achievement breakdown (same logic as inner ring)
+    const sentAchievedRatio = (rings.sentAchieved?.value || 0) / Math.max(rings.dates.total, 1);
+    const receivedAchievedRatio = (rings.receivedAchieved?.value || 0) / Math.max(rings.dates.total, 1);
 
     // SVG Geometry
     const center = 150;
@@ -62,33 +61,46 @@ export const CombinedProgressRing: React.FC<CombinedProgressRingProps> = ({
     // Shared values for animations
     const progressSent = useSharedValue(0);
     const progressReceived = useSharedValue(0);
-    const progressOuterSent = useSharedValue(0);
-    const progressOuterReceived = useSharedValue(0);
+    const progressSentAchieved = useSharedValue(0);
+    const progressReceivedAchieved = useSharedValue(0);
 
     useEffect(() => {
         const springConfig = { damping: 20, stiffness: 90 };
         progressSent.value = withSpring(sentRatio, springConfig);
         progressReceived.value = withSpring(receivedRatio, springConfig);
-        progressOuterSent.value = withSpring(sentAchievedRatio, springConfig);
-        progressOuterReceived.value = withSpring(receivedAchievedRatio, springConfig);
+        progressSentAchieved.value = withSpring(sentAchievedRatio, springConfig);
+        progressReceivedAchieved.value = withSpring(receivedAchievedRatio, springConfig);
     }, [sentRatio, receivedRatio, sentAchievedRatio, receivedAchievedRatio]);
 
     // Animated props
-    // SENT side (Clockwise from top)
+    // Inner rings use FULL circle, split between sent and received
+    // sentRatio + receivedRatio should = 1 (100% of proposals)
+
+    // SENT: Full circle portion from TOP, clockwise
     const animatedInnerSentProps = useAnimatedProps(() => ({
         strokeDasharray: `${innerCircumference * progressSent.value} ${innerCircumference}`,
     }));
-    const animatedOuterSentProps = useAnimatedProps(() => ({
-        strokeDasharray: `${outerCircumference * progressOuterSent.value} ${outerCircumference}`,
-    }));
 
-    // RECEIVED side (Counter-clockwise from top - achieved via scaleX=-1)
+    // RECEIVED: Continues from where SENT ended, clockwise
     const animatedInnerReceivedProps = useAnimatedProps(() => ({
         strokeDasharray: `${innerCircumference * progressReceived.value} ${innerCircumference}`,
+        strokeDashoffset: -innerCircumference * progressSent.value, // Start after sent portion
     }));
-    const animatedOuterReceivedProps = useAnimatedProps(() => ({
-        strokeDasharray: `${outerCircumference * progressOuterReceived.value} ${outerCircumference}`,
+
+    // OUTER RING: Split into sent achieved and received achieved
+    // Sent Achieved: Clockwise from TOP
+    const animatedOuterSentAchievedProps = useAnimatedProps(() => ({
+        strokeDasharray: `${outerCircumference * progressSentAchieved.value} ${outerCircumference}`,
     }));
+
+    // Received Achieved: Counter-clockwise from TOP
+    const animatedOuterReceivedAchievedProps = useAnimatedProps(() => {
+        const portion = outerCircumference * progressReceivedAchieved.value;
+        return {
+            strokeDasharray: `${portion} ${outerCircumference}`,
+            strokeDashoffset: -(outerCircumference - portion), // Negative for counter-clockwise
+        };
+    });
 
     return (
         <View style={styles.outerContainer}>
@@ -119,39 +131,41 @@ export const CombinedProgressRing: React.FC<CombinedProgressRingProps> = ({
                         stroke="#f5f6fa" strokeWidth={outerStrokeWidth} fill="transparent"
                     />
 
-                    {/* Progress Circles (Sent Side - Clockwise from top) */}
+                    {/* Progress Circles (Sent Side - Right Half: TOP to 6 o'clock, clockwise) */}
                     <AnimatedCircle
                         cx={center} cy={center} r={innerRadius}
                         stroke="url(#sentGrad)" strokeWidth={innerStrokeWidth} fill="transparent"
                         animatedProps={animatedInnerSentProps}
                         rotation="-90" originX={center} originY={center}
                     />
-                    <AnimatedCircle
-                        cx={center} cy={center} r={outerRadius}
-                        stroke="url(#datesGrad)" strokeWidth={outerStrokeWidth} fill="transparent"
-                        animatedProps={animatedOuterSentProps}
-                        rotation="-90" originX={center} originY={center}
-                    />
 
-                    {/* Progress Circles (Received Side - Counter-clockwise from top) */}
+                    {/* Progress Circles (Received Side - Left Half: TOP to 6 o'clock, counter-clockwise) */}
                     <AnimatedCircle
                         cx={center} cy={center} r={innerRadius}
                         stroke="url(#receivedGrad)" strokeWidth={innerStrokeWidth} fill="transparent"
                         animatedProps={animatedInnerReceivedProps}
-                        rotation="90" originX={center} originY={center}
-                        scaleX={-1}
+                        rotation="-90" originX={center} originY={center}
                     />
+
+                    {/* Outer Ring - Sent Achieved (my proposals completed) - Clockwise from TOP */}
                     <AnimatedCircle
                         cx={center} cy={center} r={outerRadius}
                         stroke="url(#datesGrad)" strokeWidth={outerStrokeWidth} fill="transparent"
-                        animatedProps={animatedOuterReceivedProps}
-                        rotation="90" originX={center} originY={center}
-                        scaleX={-1}
+                        animatedProps={animatedOuterSentAchievedProps}
+                        rotation="-90" originX={center} originY={center}
+                    />
+
+                    {/* Outer Ring - Received Achieved (partner's proposals completed) - Continues clockwise */}
+                    <AnimatedCircle
+                        cx={center} cy={center} r={outerRadius}
+                        stroke="url(#datesGrad)" strokeWidth={outerStrokeWidth} fill="transparent"
+                        animatedProps={animatedOuterReceivedAchievedProps}
+                        rotation="-90" originX={center} originY={center}
                     />
                 </Svg>
 
                 <View style={styles.centerContent}>
-                    {/* Integrated Avatars - Moved up slightly for heart center */}
+                    {/* Integrated Avatars */}
                     <View style={styles.miniAvatars}>
                         <View style={[styles.miniAvatarWrapper, styles.myMiniAvatar]}>
                             <Image source={{ uri: myAvatar }} style={styles.miniAvatar} />

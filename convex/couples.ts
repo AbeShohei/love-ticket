@@ -26,12 +26,26 @@ export const getByInviteCode = query({
 
 // Get couple by ID
 export const getById = query({
-  args: { id: v.id("couples") },
+  args: { coupleId: v.id("couples") },
   handler: async (ctx, args) => {
-    console.log('[Convex] getById called with id:', args.id);
-    const couple = await ctx.db.get(args.id);
+    console.log('[Convex] getById called with coupleId:', args.coupleId);
+    const couple = await ctx.db.get(args.coupleId);
     console.log('[Convex] getById result:', couple ? { id: couple._id, status: couple.status } : null);
-    return couple;
+
+    if (!couple) {
+      return null;
+    }
+
+    // Get partner info
+    const partners = await ctx.db
+      .query("users")
+      .withIndex("by_couple_id", (q) => q.eq("coupleId", args.coupleId))
+      .collect();
+
+    return {
+      couple,
+      partner: partners[0] || null,
+    };
   },
 });
 

@@ -40,17 +40,32 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
         }
     }, [visible, currentDisplayName, currentAvatarUrl, profile]);
 
+    const MAX_IMAGE_SIZE = 500 * 1024; // 500KB (Convex limit is 1MB, leaving margin)
+
     const pickImage = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsEditing: true,
             allowsEditing: true,
             aspect: [1, 1],
-            quality: 0.8,
+            quality: 0.5,
         });
 
         if (!result.canceled) {
-            setAvatarUri(result.assets[0].uri);
+            const asset = result.assets[0];
+
+            // Check file size
+            if (asset.fileSize && asset.fileSize > MAX_IMAGE_SIZE) {
+                const sizeMB = (asset.fileSize / (1024 * 1024)).toFixed(2);
+                Alert.alert(
+                    '画像が大きすぎます',
+                    `画像サイズは500KB以下にしてください。\n現在のサイズ: ${sizeMB}MB\n\n他の画像を選択するか、圧縮してから再度お試しください。`,
+                    [{ text: 'OK' }]
+                );
+                return;
+            }
+
+            setAvatarUri(asset.uri);
         }
     };
 
@@ -94,6 +109,18 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
                     const response = await fetch(avatarUri);
                     const blob = await response.blob();
                     console.log('[ProfileEdit] Blob created:', blob.size, blob.type);
+
+                    // Double-check blob size
+                    if (blob.size > MAX_IMAGE_SIZE) {
+                        const sizeMB = (blob.size / (1024 * 1024)).toFixed(2);
+                        Alert.alert(
+                            '画像が大きすぎます',
+                            `画像サイズは500KB以下にしてください。\n現在のサイズ: ${sizeMB}MB`,
+                            [{ text: 'OK' }]
+                        );
+                        setLoading(false);
+                        return;
+                    }
 
                     // 3. Upload file
                     const result = await fetch(uploadUrl, {

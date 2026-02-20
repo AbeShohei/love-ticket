@@ -10,67 +10,52 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useMutation, useQuery } from 'convex/react';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
-import { ActionSheetIOS, Alert, Dimensions, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { ActionSheetIOS, Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-
 export default function ProfileScreen() {
-    const insets = useSafeAreaInsets();
-    const { signOut, profile, userId, avatarUrl, displayName, convexId } = useAuth();
+    const { profile, signOut, convexId } = useAuth();
     const router = useRouter();
+    const insets = useSafeAreaInsets();
 
-    // Convex mutations
-    const updateAnniversary = useMutation(api.couples.updateAnniversary);
-    const leaveCoupleMutation = useMutation(api.couples.leaveCouple);
-
-    // Get couple info with partner
-    const coupleInfo = useQuery(
-        api.couples.getCoupleWithPartner,
-        userId ? { clerkId: userId } : 'skip'
-    );
-
-    // Get match stats from Convex - pass userId (Convex _id) since ConvexProvider doesn't provide auth tokens
-    const matchStats = useQuery(
-        api.matches.getStatsForCouple,
-        profile?.coupleId && profile?._id ? { coupleId: profile.coupleId, userId: profile._id } : 'skip'
-    );
-
-    // Anniversary state - initialize from profile
-    const [anniversaryDate, setAnniversaryDate] = useState(new Date());
-    const [showDatePicker, setShowDatePicker] = useState(false);
-    const [isSubscriptionVisible, setIsSubscriptionVisible] = useState(false);
+    // UI State
     const [isProfileEditVisible, setIsProfileEditVisible] = useState(false);
+    const [isSubscriptionVisible, setIsSubscriptionVisible] = useState(false);
+    const [showDatePicker, setShowDatePicker] = useState(false);
 
-    // Debug logging
-    useEffect(() => {
-        console.log('[Profile] State:', {
-            userId,
-            profileCoupleId: profile?.coupleId,
-            coupleInfo,
-            matchStats
-        });
-    }, [userId, profile?.coupleId, coupleInfo, matchStats]);
+    // Mutations & Queries
+    const leaveCoupleMutation = useMutation(api.couples.leave);
+    const updateAnniversary = useMutation(api.couples.updateAnniversary);
 
-    // Check if paired - consider coupleInfo could be loading (undefined)
-    const isCoupleInfoLoading = coupleInfo === undefined;
-    const isPaired = !!profile?.coupleId && coupleInfo?.partner !== undefined && coupleInfo?.partner !== null;
+    // Fetch couple info based on user's coupleId
+    const coupleInfo = useQuery(api.couples.getById,
+        profile?.coupleId ? { coupleId: profile.coupleId } : 'skip'
+    );
+    const isCoupleInfoLoading = profile?.coupleId && coupleInfo === undefined;
+    const isPaired = !!profile?.coupleId && coupleInfo?.couple?.status === 'active';
 
-    // Load anniversary from coupleInfo
+    // Get anniversary date from couple info or local state
+    const [anniversaryDate, setAnniversaryDate] = useState(new Date());
+
     useEffect(() => {
         if (coupleInfo?.couple?.anniversaryDate) {
             setAnniversaryDate(new Date(coupleInfo.couple.anniversaryDate));
         }
-    }, [coupleInfo?.couple?.anniversaryDate]);
+    }, [coupleInfo]);
 
-    // Also save using profile.id (which is now clerkId)
+    // Fetch stats
+    const matchStats = useQuery(api.matches.getStatsForCouple,
+        profile?.coupleId && convexId ? { coupleId: profile.coupleId, userId: convexId } : 'skip'
+    );
+
+    const avatarUrl = profile?.avatarUrl;
+
     const handleAnniversaryChangeWithProfile = async (newDate: Date) => {
         setAnniversaryDate(newDate);
         setShowDatePicker(false);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-        // Save to Convex - prefer coupleId from profile
         const coupleId = profile?.coupleId;
         if (coupleId) {
             try {
@@ -89,19 +74,22 @@ export default function ProfileScreen() {
         ? Math.max(0, Math.floor((new Date().getTime() - anniversaryDate.getTime()) / (1000 * 3600 * 24)))
         : 0;
 
-    // Real data for progress ring
     const ringData = useMemo(() => {
         if (!isPaired || !matchStats) {
             return {
-                sent: { value: 0, total: 0, color: '#FF4B4B', success: 0 },
-                received: { value: 0, total: 0, color: '#54a0ff', success: 0 },
-                dates: { value: 0, total: 0, color: '#8854d0' }
+                sent: { value: 0, total: 1, color: '#FF4B4B' },
+                received: { value: 0, total: 1, color: '#54a0ff' },
+                dates: { value: 0, total: 5, color: '#8854d0' },
+                sentAchieved: { value: 0, total: 1, color: '#8854d0' },
+                receivedAchieved: { value: 0, total: 1, color: '#8854d0' },
             };
         }
         return {
-            sent: { value: matchStats.sent || 0, total: 20, color: '#FF4B4B', success: matchStats.sentSuccess || 0 },
-            received: { value: matchStats.received || 0, total: 20, color: '#54a0ff', success: matchStats.receivedSuccess || 0 },
-            dates: { value: matchStats.completedDates || 0, total: 40, color: '#8854d0' }
+            sent: { value: matchStats.sent || 0, total: matchStats.sentTotal || 1, color: '#FF4B4B' },
+            received: { value: matchStats.received || 0, total: matchStats.receivedTotal || 1, color: '#54a0ff' },
+            dates: { value: matchStats.completedDates || 0, total: matchStats.totalMatches || 1, color: '#8854d0' },
+            sentAchieved: { value: matchStats.sentAchieved || 0, total: matchStats.totalMatches || 1, color: '#8854d0' },
+            receivedAchieved: { value: matchStats.receivedAchieved || 0, total: matchStats.totalMatches || 1, color: '#8854d0' },
         };
     }, [isPaired, matchStats]);
 
@@ -142,7 +130,6 @@ export default function ProfileScreen() {
         }
 
         const confirmBreakup = async () => {
-            // Second confirmation
             Alert.alert(
                 '最終確認',
                 'この操作は取り消せません。\nデートの履歴やマッチデータは保持されますが、パートナーとの連携が解除されます。',
@@ -234,10 +221,8 @@ export default function ProfileScreen() {
 
     const handlePartnerPress = () => {
         if (!isPaired) {
-            // Go to pairing screen if not paired
             router.push('/pairing');
         } else {
-            // Show partner info (could show unpair option)
             Alert.alert(
                 'パートナー',
                 `${coupleInfo?.partner?.displayName || 'パートナー'}と連携中です`,
@@ -261,7 +246,7 @@ export default function ProfileScreen() {
                     <BannerAdComponent />
                 </View>
 
-                {/* Couple Stats & Heart-Shaped Progress Ring */}
+                {/* Couple Stats & Progress Ring */}
                 {isCoupleInfoLoading ? (
                     <View style={styles.statsContainer}>
                         <Text style={styles.loadingText}>読み込み中...</Text>
