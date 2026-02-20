@@ -53,7 +53,8 @@
         {
           "cameraPermission": "このアプリはQRコードをスキャンしてパートナーとペアリングするためにカメラを使用します。"
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
