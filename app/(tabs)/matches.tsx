@@ -50,18 +50,17 @@ export default function MatchesScreen() {
   const updatePartnerDatesMutation = useMutation(api.matches.updatePartnerDates);
 
   // Combine Convex matches with local matches (deduplicate by proposalId)
+  // IMPORTANT: Convex data takes precedence for partnerSelectedDates and convexMatchId
   const matches = useMemo(() => {
-    const combined = [...localMatches];
-    const seenIds = new Set(combined.map(m => m.id));
-
+    // First, create a map from Convex matches (these have the latest data)
+    const convexMap = new Map<string, any>();
     if (convexMatches) {
       convexMatches.forEach((m: any) => {
         const proposalId = m.proposal?._id;
-        if (proposalId && !seenIds.has(proposalId)) {
-          seenIds.add(proposalId);
+        if (proposalId) {
           const proposal = m.proposal;
           if (proposal) {
-            combined.push({
+            convexMap.set(proposalId, {
               id: proposal._id,
               convexMatchId: m._id,
               name: proposal.title,
@@ -81,6 +80,27 @@ export default function MatchesScreen() {
         }
       });
     }
+
+    // Then combine with local matches, merging data where available
+    const combined: any[] = [];
+    const seenIds = new Set<string>();
+
+    // Add Convex matches first (they have the authoritative data)
+    convexMap.forEach((match, id) => {
+      combined.push(match);
+      seenIds.add(id);
+    });
+
+    // Add local matches that don't exist in Convex yet
+    localMatches.forEach((localMatch) => {
+      if (!seenIds.has(localMatch.id)) {
+        combined.push({
+          ...localMatch,
+          partnerSelectedDates: localMatch.partnerSelectedDates || [],
+        });
+        seenIds.add(localMatch.id);
+      }
+    });
 
     return combined;
   }, [localMatches, convexMatches]);
@@ -170,7 +190,7 @@ export default function MatchesScreen() {
               tags: [proposal.category],
               price: proposal.price,
               url: proposal.url,
-              candidateDates: proposal.candidateDates,
+              candidateDates: proposal.candidateDates || [],
               createdBy: proposal.createdBy,
             });
           },
@@ -272,16 +292,21 @@ export default function MatchesScreen() {
     setPlanTitle(match ? `${match.name}のデート計画` : '新しいデート計画');
 
     // Use candidateDates logic
+    // Note: match.partnerSelectedDates comes from Convex matches table
     if (match && match.createdBy === convexId) {
       // I am the Creator
       // My dates = candidateDates (fixed in proposal)
       setSelectedDates(match.candidateDates || []);
       // Partner dates = stored partnerSelectedDates
-      setPartnerDates(match.partnerSelectedDates || []);
+      const pDates = match.partnerSelectedDates || [];
+      console.log('[DEBUG] Creator view - partnerSelectedDates:', pDates);
+      setPartnerDates(pDates);
     } else if (match) {
       // I am the Partner (or it's a Preset/System proposal)
       // My dates = stored partnerSelectedDates (or empty if new)
-      setSelectedDates(match.partnerSelectedDates || []);
+      const myDates = match.partnerSelectedDates || [];
+      console.log('[DEBUG] Partner view - my selected dates:', myDates);
+      setSelectedDates(myDates);
       // Partner dates = candidateDates (from Creator)
       setPartnerDates(match.candidateDates || []);
     } else {
@@ -357,14 +382,18 @@ export default function MatchesScreen() {
         const match = matches.find(m => m.id === originalMatchId);
         // If I am NOT the creator, these are MY selected dates, so save them to partnerSelectedDates
         if (match && match.createdBy !== convexId && match.convexMatchId) {
+          console.log('[DEBUG] Saving partner dates. convexMatchId:', match.convexMatchId, 'selectedDates:', selectedDates);
           try {
             await updatePartnerDatesMutation({
               matchId: match.convexMatchId as any,
               partnerSelectedDates: selectedDates,
             });
+            console.log('[DEBUG] Partner dates saved successfully');
           } catch (e) {
-            console.error('Failed to save partner dates', e);
+            console.error('[DEBUG] Failed to save partner dates', e);
           }
+        } else {
+          console.log('[DEBUG] Not saving - match exists:', !!match, 'isCreator:', match?.createdBy === convexId, 'hasConvexId:', !!match?.convexMatchId);
         }
       }
 
@@ -380,22 +409,43 @@ export default function MatchesScreen() {
       return;
     }
 
-    if (originalMatchId) {
-      const match = matches.find(m => m.id === originalMatchId);
-      if (match && match.createdBy !== convexId && match.convexMatchId) {
-        try {
-          await updatePartnerDatesMutation({
-            matchId: match.convexMatchId as any,
-            partnerSelectedDates: selectedDates,
-          });
-          Alert.alert('保存', '候補日を一時保存しました');
-        } catch (e) {
-          console.error('Failed to save partner dates', e);
-          Alert.alert('エラー', '保存に失敗しました');
-        }
-      } else {
-        Alert.alert('エラー', '保存対象が見つかりません');
-      }
+    if (!originalMatchId) {
+      Alert.alert('エラー', 'マッチが選択されていません');
+      return;
+    }
+
+    const match = matches.find(m => m.id === originalMatchId);
+
+    if (!match) {
+      Alert.alert('エラー', 'マッチが見つかりません');
+      return;
+    }
+
+    // Check if user is the creator
+    if (match.createdBy === convexId) {
+      Alert.alert('ヒント', '作成者の候補日は提案に固定されています。変更するには提案を編集してください。', [
+        { text: 'OK' }
+      ]);
+      return;
+    }
+
+    // Check if Convex match ID exists
+    if (!match.convexMatchId) {
+      Alert.alert('エラー', 'まだサーバーと同期されていません。少し待ってから再度お試しください。');
+      return;
+    }
+
+    // Save partner dates
+    try {
+      console.log('[DEBUG] Temporary save - convexMatchId:', match.convexMatchId, 'selectedDates:', selectedDates);
+      await updatePartnerDatesMutation({
+        matchId: match.convexMatchId as any,
+        partnerSelectedDates: selectedDates,
+      });
+      Alert.alert('保存', '候補日を一時保存しました');
+    } catch (e) {
+      console.error('[DEBUG] Failed to save partner dates', e);
+      Alert.alert('エラー', '保存に失敗しました');
     }
   };
 

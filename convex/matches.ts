@@ -308,10 +308,13 @@ export const updatePartnerDates = mutation({
       throw new Error("Match not found");
     }
 
+    console.log("[DEBUG] updatePartnerDates called for match:", args.matchId, "dates:", args.partnerSelectedDates);
+
     await ctx.db.patch(args.matchId, {
       partnerSelectedDates: args.partnerSelectedDates,
     });
 
+    console.log("[DEBUG] updatePartnerDates completed");
     return args.matchId;
   },
 });
