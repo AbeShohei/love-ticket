@@ -1,0 +1,5 @@
+appId: com.shokoi.loveticket
+---
+# アプリ起動テスト
+- launchApp
+- assertVisible: "Love Ticket"

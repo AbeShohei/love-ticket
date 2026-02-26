@@ -6,7 +6,10 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "test:e2e": "maestro test .maestro/flows",
+    "test:e2e:ios": "maestro test .maestro/flows --platform ios",
+    "test:e2e:android": "maestro test .maestro/flows --platform android"
   },
   "expo": {
     "transpilePackages": []

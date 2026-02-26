@@ -10,7 +10,19 @@
       "Bash(curl:*)",
       "Bash(echo:*)",
       "Bash(xxd:*)",
-      "Bash(npx convex run:*)"
+      "Bash(npx convex run:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(eas build:*)",
+      "Bash(eas build:list:*)",
+      "Bash(eas env:list:*)",
+      "Bash(maestro:*)",
+      "Bash(adb devices:*)",
+      "Bash(echo EMULATOR_NOT_FOUND:*)",
+      "Bash(choco:*)",
+      "Bash(scoop:*)",
+      "Bash(powershell:*)"
     ]
   }
 }

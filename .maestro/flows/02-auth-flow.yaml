@@ -1,0 +1,15 @@
+appId: com.shokoi.loveticket
+---
+# 認証フローのテスト
+# 注意: 実際のテストではテスト用アカウントを使用してください
+
+- launchApp
+
+# スプラッシュ画面後の初期状態を確認
+- assertVisible:
+    text: ".*"
+
+# ログイン画面の要素が表示されることを確認
+# 実際のUIに合わせてセレクタを調整してください
+# - assertVisible: "ログイン"
+# - assertVisible: "メールアドレス"

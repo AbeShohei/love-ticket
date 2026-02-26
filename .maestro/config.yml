@@ -1,0 +1,15 @@
+appId: com.shokoi.loveticket
+
+# テスト実行時の共通設定
+---
+# iOS シミュレータの設定
+ios:
+  simulator:
+    device: iPhone 16
+    osVersion: 18.1
+
+# Android エミュレータの設定
+android:
+  emulator:
+    device: pixel_9
+    osVersion: 34
