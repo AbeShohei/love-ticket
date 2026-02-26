@@ -22,7 +22,9 @@
       "Bash(echo EMULATOR_NOT_FOUND:*)",
       "Bash(choco:*)",
       "Bash(scoop:*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(ls:*)",
+      "Bash(env:*)"
     ]
   }
 }
