@@ -42,26 +42,7 @@ export function useConvexUser() {
       // Skip if we've already synced and user exists
       if (convexUser !== undefined) {
         hasSynced.current = true;
-
-        // Update profile if needed (only if user has new data from Clerk)
-        const clerkDisplayName = user.fullName || user.username || user.firstName || undefined;
-        // Don't sync avatar from Clerk - we want users to set it manually
-        // const clerkAvatarUrl = user.imageUrl || undefined;
-
-        if (convexUser && (
-          (clerkDisplayName && convexUser.displayName !== clerkDisplayName)
-        )) {
-          try {
-            await updateUser({
-              clerkId: user.id,
-              displayName: clerkDisplayName,
-              // avatarUrl: clerkAvatarUrl,
-            });
-            console.log('[ConvexUser] Updated profile for:', user.id);
-          } catch (error) {
-            console.error('[ConvexUser] Failed to update Convex user:', error);
-          }
-        }
+        // Don't overwrite displayName from Clerk - user can set it manually in profile
         return;
       }
 
