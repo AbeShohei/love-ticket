@@ -1,6 +1,9 @@
 import { BannerAdComponent } from '@/components/Ads';
 import { CombinedProgressRing } from '@/components/CombinedProgressRing';
+import { HelpSupportModal } from '@/components/HelpSupportModal';
 import { NativeDateTimePicker } from '@/components/NativeDateTimePicker';
+import { NotificationSettingsModal } from '@/components/NotificationSettingsModal';
+import { PrivacyModal } from '@/components/PrivacyModal';
 import { ProfileEditModal } from '@/components/ProfileEditModal';
 import { SubscriptionBanner } from '@/components/SubscriptionBanner';
 import { SubscriptionModal } from '@/components/SubscriptionModal';
@@ -22,6 +25,9 @@ export default function ProfileScreen() {
     // UI State
     const [isProfileEditVisible, setIsProfileEditVisible] = useState(false);
     const [isSubscriptionVisible, setIsSubscriptionVisible] = useState(false);
+    const [isNotificationSettingsVisible, setIsNotificationSettingsVisible] = useState(false);
+    const [isPrivacyVisible, setIsPrivacyVisible] = useState(false);
+    const [isHelpVisible, setIsHelpVisible] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
 
     // Mutations & Queries
@@ -92,10 +98,6 @@ export default function ProfileScreen() {
             receivedAchieved: { value: matchStats.receivedAchieved || 0, total: matchStats.totalMatches || 1, color: '#8854d0' },
         };
     }, [isPaired, matchStats]);
-
-    const handlePress = () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    };
 
     const handleLogout = async () => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -189,20 +191,24 @@ export default function ProfileScreen() {
                 (buttonIndex) => {
                     if (buttonIndex === 0) {
                         // Cancel
+                    } else if (buttonIndex === 1) {
+                        setIsNotificationSettingsVisible(true);
+                    } else if (buttonIndex === 2) {
+                        setIsPrivacyVisible(true);
+                    } else if (buttonIndex === 3) {
+                        setIsHelpVisible(true);
                     } else if (isPaired && buttonIndex === 4) {
                         handleBreakup();
                     } else if (buttonIndex === logoutIndex) {
                         handleLogout();
-                    } else {
-                        handlePress();
                     }
                 }
             );
         } else {
             const buttons: any[] = [
-                { text: '通知設定', onPress: handlePress },
-                { text: 'プライバシー', onPress: handlePress },
-                { text: 'ヘルプとサポート', onPress: handlePress },
+                { text: '通知設定', onPress: () => setIsNotificationSettingsVisible(true) },
+                { text: 'プライバシー', onPress: () => setIsPrivacyVisible(true) },
+                { text: 'ヘルプとサポート', onPress: () => setIsHelpVisible(true) },
             ];
             if (isPaired) {
                 buttons.push({ text: 'お別れをする', onPress: handleBreakup, style: 'destructive' });
@@ -339,6 +345,21 @@ export default function ProfileScreen() {
             <ProfileEditModal
                 visible={isProfileEditVisible}
                 onClose={() => setIsProfileEditVisible(false)}
+            />
+
+            <NotificationSettingsModal
+                visible={isNotificationSettingsVisible}
+                onClose={() => setIsNotificationSettingsVisible(false)}
+            />
+
+            <PrivacyModal
+                visible={isPrivacyVisible}
+                onClose={() => setIsPrivacyVisible(false)}
+            />
+
+            <HelpSupportModal
+                visible={isHelpVisible}
+                onClose={() => setIsHelpVisible(false)}
             />
         </View>
     );

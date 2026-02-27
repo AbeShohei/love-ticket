@@ -22,6 +22,10 @@ export default defineSchema({
     )),
     subscriptionExpiry: v.optional(v.number()),
     pushToken: v.optional(v.string()), // Expo push token
+    // Notification settings
+    notificationDate: v.optional(v.boolean()), // New proposal notifications
+    notificationMatch: v.optional(v.boolean()), // Match notifications
+    notificationPlan: v.optional(v.boolean()), // Plan update notifications
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_clerk_id", ["clerkId"])

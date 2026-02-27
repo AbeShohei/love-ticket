@@ -26,16 +26,9 @@ function WebTabLayout() {
         headerShown: false,
         tabBarActiveTintColor: '#fd297b',
         tabBarInactiveTintColor: '#999',
-        tabBarStyle: { borderTopColor: '#eee' },
+        tabBarStyle: { borderTopColor: '#eee', backgroundColor: '#fff' },
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'デート案',
-          tabBarIcon: ({ color, size }) => <Ionicons name="heart-outline" size={size} color={color} />,
-        }}
-      />
       <Tabs.Screen
         name="explore"
         options={{
@@ -44,10 +37,10 @@ function WebTabLayout() {
         }}
       />
       <Tabs.Screen
-        name="schedule"
+        name="index"
         options={{
-          title: 'スケジュール',
-          tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline" size={size} color={color} />,
+          title: 'デート案',
+          tabBarIcon: ({ color, size }) => <Ionicons name="heart-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -55,6 +48,13 @@ function WebTabLayout() {
         options={{
           title: 'チケット',
           tabBarIcon: ({ color, size }) => <Ionicons name="ticket-outline" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="schedule"
+        options={{
+          title: 'スケジュール',
+          tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -70,25 +70,29 @@ function WebTabLayout() {
 
 function NativeTabLayout() {
   return (
-    <NativeTabs>
-      <NativeTabs.Trigger name="index">
-        <Icon src={<VectorIcon family={Ionicons} name="heart-outline" />} />
-        <Label>デート案</Label>
-      </NativeTabs.Trigger>
-
+    <NativeTabs
+      scrollEdgeAppearance="transparent"
+      blurEffect="systemUltraThinMaterial"
+      tintColor="#fd297b"
+    >
       <NativeTabs.Trigger name="explore">
         <Icon src={<VectorIcon family={Ionicons} name="add-circle-outline" />} />
         <Label>カタログ</Label>
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="schedule">
-        <Icon src={<VectorIcon family={Ionicons} name="calendar-outline" />} />
-        <Label>スケジュール</Label>
+      <NativeTabs.Trigger name="index">
+        <Icon src={<VectorIcon family={Ionicons} name="heart-outline" />} />
+        <Label>デート案</Label>
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="matches">
         <Icon src={<VectorIcon family={Ionicons} name="ticket-outline" />} />
         <Label>チケット</Label>
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="schedule">
+        <Icon src={<VectorIcon family={Ionicons} name="calendar-outline" />} />
+        <Label>スケジュール</Label>
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="profile">

@@ -91,7 +91,10 @@ export const create = mutation({
 
       const partner = users.find(u => u._id !== args.createdBy);
 
-      if (partner && partner.pushToken) {
+      // Check if partner wants plan notifications (default to true if not set)
+      const wantsPlanNotification = partner?.notificationPlan ?? true;
+
+      if (partner && partner.pushToken && wantsPlanNotification) {
         const dateStr = args.finalDate ? new Date(args.finalDate).toLocaleDateString() : '';
         await ctx.scheduler.runAfter(0, api.actions.notifications.sendPush, {
           pushToken: partner.pushToken,
@@ -147,8 +150,11 @@ export const update = mutation({
                     .collect();
 
                 const partner = users.find(u => u.clerkId !== identity.subject);
-                
-                if (partner && partner.pushToken) {
+
+                // Check if partner wants plan notifications (default to true if not set)
+                const wantsPlanNotification = partner?.notificationPlan ?? true;
+
+                if (partner && partner.pushToken && wantsPlanNotification) {
                     const dateStr = args.finalDate ? new Date(args.finalDate).toLocaleDateString() : '';
                     await ctx.scheduler.runAfter(0, api.actions.notifications.sendPush, {
                         pushToken: partner.pushToken,

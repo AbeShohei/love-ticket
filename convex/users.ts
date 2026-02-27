@@ -170,6 +170,39 @@ export const updatePushToken = mutation({
   },
 });
 
+// Update notification settings
+export const updateNotificationSettings = mutation({
+  args: {
+    notificationDate: v.optional(v.boolean()),
+    notificationMatch: v.optional(v.boolean()),
+    notificationPlan: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthenticated");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const updates: Record<string, any> = { updatedAt: Date.now() };
+    if (args.notificationDate !== undefined) updates.notificationDate = args.notificationDate;
+    if (args.notificationMatch !== undefined) updates.notificationMatch = args.notificationMatch;
+    if (args.notificationPlan !== undefined) updates.notificationPlan = args.notificationPlan;
+
+    await ctx.db.patch(user._id, updates);
+
+    return user._id;
+  },
+});
+
 // Check if user has premium subscription
 export const hasEntitlement = query({
   args: { clerkId: v.string() },

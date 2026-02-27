@@ -156,7 +156,7 @@ export const getCoupleWithPartner = query({
 });
 
 // Leave a couple (breakup)
-export const leaveCouple = mutation({
+export const leave = mutation({
   args: {
     userId: v.id("users"),
   },
@@ -173,6 +173,41 @@ export const leaveCouple = mutation({
       coupleId: undefined,
       updatedAt: Date.now(),
     });
+
+    // Delete all related data for this couple
+    // 1. Delete matches
+    const matches = await ctx.db
+      .query("matches")
+      .withIndex("by_couple_id", (q) => q.eq("coupleId", coupleId))
+      .collect();
+    for (const match of matches) {
+      await ctx.db.delete(match._id);
+    }
+
+    // 2. Delete plans
+    const plans = await ctx.db
+      .query("plans")
+      .withIndex("by_couple_id", (q) => q.eq("coupleId", coupleId))
+      .collect();
+    for (const plan of plans) {
+      await ctx.db.delete(plan._id);
+    }
+
+    // 3. Delete custom proposals and their swipes
+    const proposals = await ctx.db
+      .query("proposals")
+      .withIndex("by_couple_id", (q) => q.eq("coupleId", coupleId))
+      .collect();
+    for (const proposal of proposals) {
+      const swipes = await ctx.db
+        .query("swipes")
+        .withIndex("by_proposal_id", (q) => q.eq("proposalId", proposal._id))
+        .collect();
+      for (const swipe of swipes) {
+        await ctx.db.delete(swipe._id);
+      }
+      await ctx.db.delete(proposal._id);
+    }
 
     // Check if any other user still references this couple
     const remainingMembers = await ctx.db

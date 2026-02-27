@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { api } from "./_generated/api";
 import { mutation, query } from "./_generated/server";
 
 // Get preset proposals (global)
@@ -146,12 +147,29 @@ export const create = mutation({
     // Auto-swipe right for creator so it doesn't show in their stack
     // and matches immediately when partner swipes
     await ctx.db.insert("swipes", {
-
       userId: args.createdBy,
       proposalId: proposalId,
       direction: "right",
       createdAt: Date.now(),
     });
+
+    // Send push notification to partner
+    const coupleUsers = await ctx.db
+      .query("users")
+      .withIndex("by_couple_id", (q) => q.eq("coupleId", args.coupleId))
+      .collect();
+    const partner = coupleUsers.find((u) => u._id !== args.createdBy);
+
+    // Check if partner wants date notifications (default to true if not set)
+    const wantsDateNotification = partner?.notificationDate ?? true;
+
+    if (partner && partner.pushToken && wantsDateNotification) {
+      await ctx.scheduler.runAfter(0, api.actions.notifications.sendPush, {
+        pushToken: partner.pushToken,
+        title: "💌 デート案が届きました",
+        body: args.title,
+      });
+    }
 
     return proposalId;
   },

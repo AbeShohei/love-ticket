@@ -91,7 +91,10 @@ export const createFromMutualSwipe = mutation({
 
       const partner = users.find(u => u.clerkId !== identity.subject);
 
-      if (partner && partner.pushToken) {
+      // Check if partner wants match notifications (default to true if not set)
+      const wantsMatchNotification = partner?.notificationMatch ?? true;
+
+      if (partner && partner.pushToken && wantsMatchNotification) {
         const proposal = await ctx.db.get(args.proposalId);
         const title = "マッチトしました！"; // "Matched!"
         const body = proposal ? `「${proposal.title}」でお互いの行きたいが一致しました！` : "新しいマッチが成立しました！";
@@ -216,18 +219,24 @@ export const getStatsForCouple = query({
 
     const partner = coupleUsers.find(u => u._id !== user!._id);
 
-    // Count proposals created by each user
+    // Count proposals created by each user (filtered by current couple)
     const myProposals = await ctx.db
       .query("proposals")
       .withIndex("by_created_by", (q) => q.eq("createdBy", user!._id))
-      .filter((q) => q.eq(q.field("isActive"), true))
+      .filter((q) => q.and(
+        q.eq(q.field("isActive"), true),
+        q.eq(q.field("coupleId"), args.coupleId)
+      ))
       .collect();
 
     const partnerProposals = partner
       ? await ctx.db
           .query("proposals")
           .withIndex("by_created_by", (q) => q.eq("createdBy", partner._id))
-          .filter((q) => q.eq(q.field("isActive"), true))
+          .filter((q) => q.and(
+            q.eq(q.field("isActive"), true),
+            q.eq(q.field("coupleId"), args.coupleId)
+          ))
           .collect()
       : [];
 

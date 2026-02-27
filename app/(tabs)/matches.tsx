@@ -42,7 +42,7 @@ export default function MatchesScreen() {
 
   const convexHistory = useQuery(
     api.swipes.getHistory,
-    convexId ? { userId: convexId } : 'skip'
+    convexId && profile?.coupleId ? { userId: convexId, coupleId: profile.coupleId } : 'skip'
   );
 
   const createPlan = useMutation(api.plans.create);

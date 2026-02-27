@@ -5,6 +5,7 @@ import { mutation, query } from "./_generated/server";
 export const getHistory = query({
   args: {
     userId: v.id("users"),
+    coupleId: v.optional(v.id("couples")),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -14,17 +15,21 @@ export const getHistory = query({
       .query("swipes")
       .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
       .order("desc")
-      .take(limit);
+      .take(limit * 2); // Fetch extra to account for filtered items
 
     // Fetch proposal details for each swipe
     const swipesWithProposals = await Promise.all(
       swipes.map(async (swipe) => {
         const proposal = await ctx.db.get(swipe.proposalId);
-        if (proposal && proposal.createdBy === args.userId) {
-          return null; // Skip self-created proposals (auto-swipes)
+        if (!proposal) return null;
+        if (proposal.createdBy === args.userId) return null; // Skip auto-swipes
+
+        // Filter by coupleId if provided
+        if (args.coupleId && proposal.coupleId && proposal.coupleId !== args.coupleId) {
+          return null;
         }
 
-        if (proposal && proposal.imageStorageIds && proposal.imageStorageIds.length > 0) {
+        if (proposal.imageStorageIds && proposal.imageStorageIds.length > 0) {
           const urls = await Promise.all(proposal.imageStorageIds.map((id) => ctx.storage.getUrl(id)));
           const validUrls = urls.filter(Boolean) as string[];
           if (validUrls.length > 0) {
@@ -39,7 +44,7 @@ export const getHistory = query({
       })
     );
 
-    return swipesWithProposals.filter(Boolean);
+    return swipesWithProposals.filter(Boolean).slice(0, limit);
   },
 });
 
@@ -130,6 +135,7 @@ export const getCoupleSwipesForProposal = query({
 export const getSwipedProposalIds = query({
   args: {
     userId: v.id("users"),
+    coupleId: v.optional(v.id("couples")),
   },
   handler: async (ctx, args) => {
     const swipes = await ctx.db
@@ -137,7 +143,21 @@ export const getSwipedProposalIds = query({
       .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
       .collect();
 
-    return swipes.map((s) => s.proposalId);
+    if (!args.coupleId) {
+      return swipes.map((s) => s.proposalId);
+    }
+
+    // Filter swipes to only include proposals from current couple
+    const filtered = await Promise.all(
+      swipes.map(async (s) => {
+        const proposal = await ctx.db.get(s.proposalId);
+        if (!proposal) return null;
+        if (proposal.coupleId && proposal.coupleId !== args.coupleId) return null;
+        return s.proposalId;
+      })
+    );
+
+    return filtered.filter(Boolean);
   },
 });
 
