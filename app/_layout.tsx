@@ -9,7 +9,6 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
 import { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/components/useColorScheme';
@@ -21,11 +20,14 @@ export {
   ErrorBoundary
 } from 'expo-router';
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
+// Configure splash screen fade animation
+SplashScreen.setOptions({
+  duration: 500,
+  fade: true,
+});
 
-// Set root view background color
-SystemUI.setBackgroundColorAsync('white');
+// Set root view background color to match splash
+SystemUI.setBackgroundColorAsync('#FF4B4B');
 
 import { AdMobProvider } from '@/providers/AdMobProvider';
 
@@ -47,16 +49,6 @@ export default function RootLayout() {
   useEffect(() => {
     if (error) throw error;
   }, [error]);
-
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
-
-  if (!loaded) {
-    return null;
-  }
 
   // Show warning if Clerk key is not configured
   if (!CLERK_PUBLISHABLE_KEY) {
@@ -130,15 +122,6 @@ function RootLayoutNav() {
       }
     }
   }, [isSignedIn, isLoading, segments, profile]);
-
-  // Show loading while checking auth or waiting for profile
-  if (isLoading || (isSignedIn && profile === null)) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
-        <ActivityIndicator size="large" color="#FF4B4B" />
-      </View>
-    );
-  }
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>

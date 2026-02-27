@@ -9,8 +9,6 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash-icon.png",
-      "resizeMode": "contain",
       "backgroundColor": "#FF4B4B"
     },
     "ios": {
@@ -54,7 +52,15 @@
           "cameraPermission": "このアプリはQRコードをスキャンしてパートナーとペアリングするためにカメラを使用します。"
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FF4B4B",
+          "image": "./assets/images/icon.png",
+          "imageWidth": 120
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
