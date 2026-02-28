@@ -43,8 +43,7 @@ export const AdMobProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                     await requestTrackingPermissionsAsync();
                 }
                 // Dynamic import/require to avoid top-level crash
-                const mobileAds = require('react-native-google-mobile-ads').default;
-                const { MaxAdContentRating } = require('react-native-google-mobile-ads');
+                const { default: mobileAds, MaxAdContentRating } = require('react-native-google-mobile-ads');
 
                 // 開発モードではテストデバイスを設定
                 const testDevices = __DEV__ ? TEST_DEVICE_IDS : [];
@@ -60,7 +59,7 @@ export const AdMobProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 console.log('AdMob: Test devices configured:', testDevices);
 
                 // Initialize AdMob
-                const adapterStatuses = await mobileAds().initialize();
+                await mobileAds().initialize();
                 console.log('AdMob: Initialized successfully');
                 setIsInitialized(true);
             } catch (error) {

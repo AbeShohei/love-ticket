@@ -136,6 +136,16 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
     initializeRevenueCat();
   }, [isSignedIn, profile?.id]);
 
+  // Clean up on sign-out
+  useEffect(() => {
+    if (!isSignedIn && isConfigured) {
+      Purchases.logOut().catch(console.error);
+      setIsConfigured(false);
+      setCustomerInfo(null);
+      setOfferings(null);
+    }
+  }, [isSignedIn, isConfigured]);
+
   // Listen to customer info updates (only after RevenueCat is configured)
   useEffect(() => {
     if (!isConfigured) return;

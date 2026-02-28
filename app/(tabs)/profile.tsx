@@ -132,7 +132,7 @@ export default function ProfileScreen() {
     };
 
     const handleLogout = async () => {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackStyle.Warning);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
 
         Alert.alert(
             t('profile.logoutConfirmTitle'),
@@ -220,21 +220,17 @@ export default function ProfileScreen() {
 
         if (Platform.OS === 'ios') {
             // Add subscription management option for premium users
-            const baseOptions = [t('common.cancel'), t('settings.notifications'), t('settings.language'), t('settings.privacy'), t('settings.helpSupport')];
-            if (isPremium) {
-                baseOptions.push(t('subscription.manageSubscription'));
-            }
-            if (isPaired) {
-                baseOptions.push(t('profile.breakupTitle'));
-            }
+            const baseOptions: string[] = [t('common.cancel'), t('settings.notifications'), t('settings.language'), t('settings.privacy'), t('settings.helpSupport')];
+            if (isPremium) baseOptions.push(t('subscription.manageSubscription'));
+            if (isPaired) baseOptions.push(t('profile.breakupTitle'));
             baseOptions.push(t('auth.logout'));
             baseOptions.push(t('profile.deleteAccountTitle'));
 
             const options = baseOptions;
-            const subscriptionIndex = isPremium ? 5 : -1;
-            const breakupIndex = isPremium ? 6 : 5;
-            const logoutIndex = options.length - 2;
-            const deleteIndex = options.length - 1;
+            const subscriptionIndex = isPremium ? options.indexOf(t('subscription.manageSubscription')) : -1;
+            const breakupIndex = options.indexOf(t('profile.breakupTitle'));
+            const logoutIndex = options.indexOf(t('auth.logout'));
+            const deleteIndex = options.indexOf(t('profile.deleteAccountTitle'));
 
             ActionSheetIOS.showActionSheetWithOptions(
                 {

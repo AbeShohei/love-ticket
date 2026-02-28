@@ -321,13 +321,16 @@ export const deleteAccount = mutation({
       throw new Error("User not found");
     }
 
-    // Delete daily usage records
+    // Delete daily usage records in parallel
     const usageRecords = await ctx.db
       .query("dailyUsage")
       .withIndex("by_user_date", (q) => q.eq("userId", user._id))
       .collect();
-    for (const record of usageRecords) {
-      await ctx.db.delete(record._id);
+    await Promise.all(usageRecords.map((r) => ctx.db.delete(r._id)));
+
+    // Delete avatar from storage if uploaded
+    if (user.avatarStorageId) {
+      await ctx.storage.delete(user.avatarStorageId);
     }
 
     // Delete the user record

@@ -18,7 +18,7 @@ interface Props {
 
 export function SubscriptionModal({ visible, onClose }: Props) {
     const [selectedPlan, setSelectedPlan] = useState<PlanType>('monthly');
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const {
         isPremium,
         offerings,
@@ -69,8 +69,6 @@ export function SubscriptionModal({ visible, onClose }: Props) {
         { icon: 'sparkles-outline', title: t('subscription.features.unlimitedAI'), desc: t('subscription.features.unlimitedAIDesc') },
         { icon: 'infinite-outline', title: t('subscription.features.unlimitedProposals'), desc: t('subscription.features.unlimitedProposalsDesc') },
     ];
-
-    const { i18n } = useTranslation();
 
     // Get localized price from RevenueCat package
     const getPlanPrice = (planType: PlanType): string => {

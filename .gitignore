@@ -43,3 +43,7 @@ yarn-error.*
 # Maestro E2E
 .maestro/output/
 *.mp4
+
+# Build artifacts
+build/
+ios/build/
