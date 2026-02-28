@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React from 'react';
 import { Platform } from 'react-native';
-
+import { useTranslation } from 'react-i18next';
 
 // Web uses standard Tabs, native uses NativeTabs
 const isWeb = Platform.OS === 'web';
@@ -20,6 +20,8 @@ if (!isWeb) {
 import { Tabs } from 'expo-router';
 
 function WebTabLayout() {
+  const { t } = useTranslation();
+
   return (
     <Tabs
       screenOptions={{
@@ -32,35 +34,35 @@ function WebTabLayout() {
       <Tabs.Screen
         name="explore"
         options={{
-          title: 'カタログ',
+          title: t('tabs.catalog'),
           tabBarIcon: ({ color, size }) => <Ionicons name="add-circle-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="index"
         options={{
-          title: 'デート案',
+          title: t('tabs.dateIdeas'),
           tabBarIcon: ({ color, size }) => <Ionicons name="heart-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="matches"
         options={{
-          title: 'チケット',
+          title: t('tabs.tickets'),
           tabBarIcon: ({ color, size }) => <Ionicons name="ticket-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="schedule"
         options={{
-          title: 'スケジュール',
+          title: t('tabs.schedule'),
           tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'マイページ',
+          title: t('tabs.myPage'),
           tabBarIcon: ({ color, size }) => <Ionicons name="person-circle-outline" size={size} color={color} />,
         }}
       />
@@ -69,6 +71,8 @@ function WebTabLayout() {
 }
 
 function NativeTabLayout() {
+  const { t } = useTranslation();
+
   return (
     <NativeTabs
       scrollEdgeAppearance="transparent"
@@ -77,27 +81,27 @@ function NativeTabLayout() {
     >
       <NativeTabs.Trigger name="explore">
         <Icon src={<VectorIcon family={Ionicons} name="add-circle-outline" />} />
-        <Label>カタログ</Label>
+        <Label>{t('tabs.catalog')}</Label>
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="index">
         <Icon src={<VectorIcon family={Ionicons} name="heart-outline" />} />
-        <Label>デート案</Label>
+        <Label>{t('tabs.dateIdeas')}</Label>
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="matches">
         <Icon src={<VectorIcon family={Ionicons} name="ticket-outline" />} />
-        <Label>チケット</Label>
+        <Label>{t('tabs.tickets')}</Label>
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="schedule">
         <Icon src={<VectorIcon family={Ionicons} name="calendar-outline" />} />
-        <Label>スケジュール</Label>
+        <Label>{t('tabs.schedule')}</Label>
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="profile">
         <Icon src={<VectorIcon family={Ionicons} name="person-circle-outline" />} />
-        <Label>マイページ</Label>
+        <Label>{t('tabs.myPage')}</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -106,4 +110,3 @@ function NativeTabLayout() {
 export default function TabLayout() {
   return isWeb ? <WebTabLayout /> : <NativeTabLayout />;
 }
-

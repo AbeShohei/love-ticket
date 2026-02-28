@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { parsePairingUrl } from '@/utils/qrCode';
+import { useTranslation } from 'react-i18next';
 
 interface QRScannerProps {
   onScanSuccess?: (data: { userId: string; inviteCode: string }) => void;
@@ -12,6 +13,7 @@ interface QRScannerProps {
 }
 
 export function QRScanner({ onScanSuccess, onClose }: QRScannerProps) {
+  const { t } = useTranslation();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const router = useRouter();
@@ -30,9 +32,9 @@ export function QRScanner({ onScanSuccess, onClose }: QRScannerProps) {
     } else {
       // Invalid QR code - show brief error but continue scanning
       Alert.alert(
-        '無効なQRコード',
-        'このQRコードはLove Ticketのペアリング用ではありません。',
-        [{ text: 'OK' }]
+        t('qrScanner.scanFailed'),
+        t('qrScanner.invalidQRCode'),
+        [{ text: t('common.ok') }]
       );
     }
   };
@@ -40,7 +42,7 @@ export function QRScanner({ onScanSuccess, onClose }: QRScannerProps) {
   if (!permission) {
     return (
       <View style={styles.loadingContainer}>
-        <Text>カメラの準備中...</Text>
+        <Text>{t('qrScanner.scanning')}</Text>
       </View>
     );
   }
@@ -49,12 +51,12 @@ export function QRScanner({ onScanSuccess, onClose }: QRScannerProps) {
     return (
       <View style={styles.permissionContainer}>
         <Ionicons name="camera-outline" size={64} color="#999" />
-        <Text style={styles.permissionTitle}>カメラへのアクセスが必要です</Text>
+        <Text style={styles.permissionTitle}>{t('qrScanner.noCameraPermission')}</Text>
         <Text style={styles.permissionText}>
-          QRコードをスキャンしてパートナーとペアリングするには、カメラへのアクセスを許可してください。
+          {t('qrScanner.permissionHint')}
         </Text>
         <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
-          <Text style={styles.permissionButtonText}>許可する</Text>
+          <Text style={styles.permissionButtonText}>{t('common.continue')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -85,7 +87,7 @@ export function QRScanner({ onScanSuccess, onClose }: QRScannerProps) {
           </View>
 
           <Text style={styles.instructionText}>
-            QRコードを枠内に合わせてください
+            {t('qrScanner.alignQR')}
           </Text>
         </View>
       </CameraView>

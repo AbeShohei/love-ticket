@@ -1,6 +1,7 @@
 import RNDateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import React, { useState } from 'react';
 import { Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   mode?: 'date' | 'time' | 'datetime';
@@ -16,6 +17,7 @@ export function NativeDateTimePicker({ mode = 'datetime', value, onChange, style
   const [internalShow, setInternalShow] = useState(false);
   const isControlled = typeof externalShow !== 'undefined';
   const show = isControlled ? externalShow : internalShow;
+  const { t } = useTranslation();
 
   const setShow = (visible: boolean) => {
     if (isControlled) {
@@ -117,10 +119,10 @@ export function NativeDateTimePicker({ mode = 'datetime', value, onChange, style
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <TouchableOpacity onPress={cancelIOS}>
-                  <Text style={styles.cancelButtonText}>キャンセル</Text>
+                  <Text style={styles.cancelButtonText}>{t('datePicker.cancel')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={confirmIOS}>
-                  <Text style={styles.doneButtonText}>完了</Text>
+                  <Text style={styles.doneButtonText}>{t('datePicker.done')}</Text>
                 </TouchableOpacity>
               </View>
               <RNDateTimePicker

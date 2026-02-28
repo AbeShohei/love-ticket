@@ -23,8 +23,27 @@
       "Bash(choco:*)",
       "Bash(scoop:*)",
       "Bash(powershell:*)",
+      "Bash(npx expo:*)",
+      "Bash(xcrun simctl:*)",
+      "Bash(lsof:*)",
+      "Bash(ipconfig getifaddr:*)",
       "Bash(ls:*)",
-      "Bash(env:*)"
+      "Bash(git pull:*)",
+      "Bash(git:*)",
+      "Bash(pod install:*)",
+      "Bash(python3:*)",
+      "Bash(pkill:*)",
+      "Bash(node:*)",
+      "Bash(open:*)",
+      "Bash(xcodebuild:*)",
+      "Bash(osascript:*)",
+      "Bash(security find-identity:*)",
+      "Bash(xcrun altool:*)",
+      "Bash(cat:*)",
+      "Bash(atos:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(greenlight preflight:*)",
+      "Bash(npm show:*)"
     ]
   }
 }

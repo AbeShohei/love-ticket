@@ -5,6 +5,7 @@ import * as Sharing from 'expo-sharing';
 import React from 'react';
 import { Dimensions, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
+import { useTranslation } from 'react-i18next';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -15,6 +16,8 @@ interface Props {
 }
 
 export function PartnerActionSheet({ visible, onClose, userId }: Props) {
+    const { t } = useTranslation();
+
     const handleCopyId = async () => {
         await Clipboard.setStringAsync(userId);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -24,7 +27,7 @@ export function PartnerActionSheet({ visible, onClose, userId }: Props) {
         const url = `love-ticket://link/${userId}`;
         if (await Sharing.isAvailableAsync()) {
             await Sharing.shareAsync(url, {
-                dialogTitle: 'パートナーに招待を送る',
+                dialogTitle: t('partnerActionSheet.sendInvite'),
             });
         }
     };
@@ -95,15 +98,15 @@ export function PartnerActionSheet({ visible, onClose, userId }: Props) {
                     contentContainerStyle={styles.content}
                     showsVerticalScrollIndicator={false}
                 >
-                    <Text style={styles.title}>パートナーと連携</Text>
-                    <Text style={styles.subtitle}>QRコードをスキャンしてお互いを登録しましょう</Text>
+                    <Text style={styles.title}>{t('partnerActionSheet.title')}</Text>
+                    <Text style={styles.subtitle}>{t('partnerActionSheet.subtitle')}</Text>
 
                     <View style={styles.qrSection}>
                         {renderMockQR()}
                         <Text style={styles.userIdText}>ID: {userId}</Text>
                         <TouchableOpacity style={styles.copyBtn} onPress={handleCopyId}>
                             <Ionicons name="copy-outline" size={16} color="#7c8591" />
-                            <Text style={styles.copyBtnText}>IDをコピー</Text>
+                            <Text style={styles.copyBtnText}>{t('partnerActionSheet.copyId')}</Text>
                         </TouchableOpacity>
                     </View>
 
@@ -112,19 +115,19 @@ export function PartnerActionSheet({ visible, onClose, userId }: Props) {
                             <View style={[styles.iconCircle, { backgroundColor: '#FF4B4B' }]}>
                                 <Ionicons name="qr-code-outline" size={24} color="#fff" />
                             </View>
-                            <Text style={styles.actionLabel}>スキャン</Text>
+                            <Text style={styles.actionLabel}>{t('partnerActionSheet.scan')}</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.actionBtn} onPress={handleShare}>
                             <View style={[styles.iconCircle, { backgroundColor: '#54a0ff' }]}>
                                 <Ionicons name="share-outline" size={24} color="#fff" />
                             </View>
-                            <Text style={styles.actionLabel}>共有</Text>
+                            <Text style={styles.actionLabel}>{t('common.share')}</Text>
                         </TouchableOpacity>
                     </View>
 
                     <TouchableOpacity style={styles.mainCloseBtn} onPress={onClose}>
-                        <Text style={styles.mainCloseBtnText}>閉じる</Text>
+                        <Text style={styles.mainCloseBtnText}>{t('partnerActionSheet.close')}</Text>
                     </TouchableOpacity>
                 </ScrollView>
             </View>

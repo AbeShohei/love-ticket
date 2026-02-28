@@ -3,22 +3,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import React, { useEffect, useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Calendar, DateData, LocaleConfig } from 'react-native-calendars';
+import { Calendar, DateData } from 'react-native-calendars';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
 
 // Animated Image Component
 const AnimatedImage = Animated.createAnimatedComponent(Image);
 const AnimatedView = Animated.createAnimatedComponent(View);
 
-// Configure Japanese Locale if needed (optional but good for UX)
-LocaleConfig.locales['jp'] = {
-    monthNames: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
-    monthNamesShort: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
-    dayNames: ['日曜日', '月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日'],
-    dayNamesShort: ['日', '月', '火', '水', '木', '金', '土'],
-    today: '今日'
-};
-LocaleConfig.defaultLocale = 'jp';
+// Locale is configured in I18nProvider
 
 interface MultiSelectCalendarProps {
     selectedDates: string[]; // User's selected dates
@@ -27,6 +20,7 @@ interface MultiSelectCalendarProps {
 }
 
 export function MultiSelectCalendar({ selectedDates, partnerDates = [], onDatesChange }: MultiSelectCalendarProps) {
+    const { t } = useTranslation();
 
     // Convert array to markedDates object
     const markedDates = useMemo(() => {
@@ -89,10 +83,10 @@ export function MultiSelectCalendar({ selectedDates, partnerDates = [], onDatesC
 
             {/* Selected Dates Summary */}
             <View style={styles.summaryContainer}>
-                <Text style={styles.summaryTitle}>選択された候補日 ({selectedDates.length})</Text>
+                <Text style={styles.summaryTitle}>{t('multiSelectCalendar.selectedDates', { count: selectedDates.length })}</Text>
                 <View style={styles.tagsContainer}>
                     {selectedDates.length === 0 && (
-                        <Text style={styles.emptyText}>日付を選択してください</Text>
+                        <Text style={styles.emptyText}>{t('multiSelectCalendar.selectDates')}</Text>
                     )}
                     {selectedDates.map(date => {
                         const isMatch = partnerDates.includes(date);

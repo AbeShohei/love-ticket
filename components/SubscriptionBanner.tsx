@@ -1,12 +1,22 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { useSubscription } from '@/providers/SubscriptionProvider';
 
 interface Props {
     onPress: () => void;
 }
 
 export function SubscriptionBanner({ onPress }: Props) {
+    const { t } = useTranslation();
+    const { isPremium } = useSubscription();
+
+    // Don't show banner for premium users
+    if (isPremium) {
+        return null;
+    }
+
     return (
         <TouchableOpacity
             style={styles.container}
@@ -24,7 +34,7 @@ export function SubscriptionBanner({ onPress }: Props) {
                         <Text style={styles.badgeText}>PREMIUM</Text>
                     </View>
                     <Text style={styles.title}>LoveTicket Premium</Text>
-                    <Text style={styles.subtitle}>二人の絆を、もっと深めるために</Text>
+                    <Text style={styles.subtitle}>{t('subscriptionBanner.subtitle')}</Text>
                 </View>
 
                 <View style={styles.rightContent}>

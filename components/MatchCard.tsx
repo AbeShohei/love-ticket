@@ -1,6 +1,7 @@
 import { CATEGORIES } from '@/constants/Presets';
 import { Match } from '@/stores/matchStore';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import MaskedView from '@react-native-masked-view/masked-view';
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
@@ -15,6 +16,8 @@ type MatchCardProps = {
 };
 
 export const MatchCard = ({ item, onPress, compact }: MatchCardProps) => {
+    const { t } = useTranslation();
+
     return (
         <TouchableOpacity style={[styles.cardContainer, compact && { height: 160, marginBottom: 0 }]} onPress={onPress}>
             {/* 1. Full Background Image */}
@@ -88,11 +91,11 @@ export const MatchCard = ({ item, onPress, compact }: MatchCardProps) => {
                     {(item.tags && item.tags.length > 0) && (
                         <View style={styles.tagsContainer}>
                             {item.tags.slice(0, compact ? 1 : undefined).map((tag, index) => {
-                                const cat = CATEGORIES.find(c => c.id === tag || c.label === tag);
+                                const cat = CATEGORIES.find(c => c.id === tag || c.labelKey === tag);
                                 return (
                                     <View key={index} style={[styles.tagBadge, cat && { backgroundColor: cat.color, borderColor: cat.color }]}>
                                         {cat && <Ionicons name={cat.icon as any} size={10} color="#fff" style={{ marginRight: 4 }} />}
-                                        <Text style={styles.tagText}>{cat ? cat.label : tag}</Text>
+                                        <Text style={styles.tagText}>{cat ? t(cat.labelKey) : tag}</Text>
                                     </View>
                                 );
                             })}

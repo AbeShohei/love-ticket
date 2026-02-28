@@ -12,6 +12,7 @@ import { Image } from 'expo-image';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Dimensions, Modal, RefreshControl, ScrollView, SectionList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 // Helper functions for Date/Time parsing REMOVED
 // Helper functions for Date/Time parsing REMOVED
@@ -22,6 +23,7 @@ import { NativeDateTimePicker } from '../../components/NativeDateTimePicker';
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
 export default function MatchesScreen() {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const { profile, convexId } = useAuth();
   const localMatches = useMatchStore((state) => state.matches);
@@ -147,14 +149,14 @@ export default function MatchesScreen() {
   const handleHistoryItemPress = (record: SwipeRecord) => {
     const proposal = record.proposal;
     const currentDirection = record.direction;
-    const currentLabel = currentDirection === 'left' ? 'スキップ' : (currentDirection === 'up' ? '超いいね' : '気になる');
+    const currentLabel = currentDirection === 'left' ? t('matches.skip') : (currentDirection === 'up' ? t('matches.superLike') : t('matches.interested'));
 
     Alert.alert(
       proposal.title,
-      `現在: ${currentLabel}`,
+      `${t('matches.interested')}: ${currentLabel}`,
       [
         {
-          text: '気になる',
+          text: t('matches.interested'),
           style: 'default',
           onPress: () => {
             updateSwipeDirection(record.id, 'right');
@@ -174,7 +176,7 @@ export default function MatchesScreen() {
           },
         },
         {
-          text: '超いいね',
+          text: t('matches.superLike'),
           style: 'default',
           onPress: () => {
             updateSwipeDirection(record.id, 'up');
@@ -196,14 +198,14 @@ export default function MatchesScreen() {
           },
         },
         {
-          text: 'スキップ',
+          text: t('matches.skip'),
           style: 'default',
           onPress: () => {
             updateSwipeDirection(record.id, 'left');
           },
         },
         {
-          text: 'キャンセル',
+          text: t('common.cancel'),
           style: 'cancel',
         },
       ]
@@ -263,13 +265,13 @@ export default function MatchesScreen() {
         });
 
       return {
-        title: cat.label,
+        title: t(cat.labelKey),
         icon: cat.icon,
         color: cat.color,
         data: sectionMatches,
       };
     }).filter(section => section.data.length > 0);
-  }, [visibleMatches]);
+  }, [visibleMatches, t]);
 
   // Handle matches without a valid category
   const uncategorized = visibleMatches
@@ -278,7 +280,7 @@ export default function MatchesScreen() {
 
   if (uncategorized.length > 0) {
     sections.push({
-      title: 'その他',
+      title: t('matches.other'),
       icon: 'help-circle' as any,
       color: '#888',
       data: uncategorized,
@@ -289,7 +291,7 @@ export default function MatchesScreen() {
     setSelectedMatchIds([matchId]);
     setOriginalMatchId(matchId);
     const match = matches.find(m => m.id === matchId);
-    setPlanTitle(match ? `${match.name}のデート計画` : '新しいデート計画');
+    setPlanTitle(match ? `${match.name}${t('matches.newPlan')}` : t('matches.newPlan'));
 
     // Use candidateDates logic
     // Note: match.partnerSelectedDates comes from Convex matches table
@@ -367,13 +369,13 @@ export default function MatchesScreen() {
   const handleNextStep = async () => {
     if (step === 1) {
       if (selectedMatchIds.length === 0) {
-        Alert.alert('エラー', '最低1つの提案を選択してください');
+        Alert.alert(t('common.error'), t('matches.selectProposal'));
         return;
       }
       setStep(2);
     } else if (step === 2) {
       if (selectedDates.length === 0) {
-        Alert.alert('エラー', '候補日を最低1つ選択してください');
+        Alert.alert(t('common.error'), t('matches.selectCandidateDate'));
         return;
       }
 
@@ -405,33 +407,33 @@ export default function MatchesScreen() {
     if (step !== 2) return;
 
     if (selectedDates.length === 0) {
-      Alert.alert('エラー', '候補日を最低1つ選択してください');
+      Alert.alert(t('common.error'), t('matches.selectCandidateDate'));
       return;
     }
 
     if (!originalMatchId) {
-      Alert.alert('エラー', 'マッチが選択されていません');
+      Alert.alert(t('common.error'), t('matches.noMatchSelected'));
       return;
     }
 
     const match = matches.find(m => m.id === originalMatchId);
 
     if (!match) {
-      Alert.alert('エラー', 'マッチが見つかりません');
+      Alert.alert(t('common.error'), t('matches.matchNotFound'));
       return;
     }
 
     // Check if user is the creator
     if (match.createdBy === convexId) {
-      Alert.alert('ヒント', '作成者の候補日は提案に固定されています。変更するには提案を編集してください。', [
-        { text: 'OK' }
+      Alert.alert(t('matches.hint'), t('matches.creatorDatesFixed'), [
+        { text: t('common.ok') }
       ]);
       return;
     }
 
     // Check if Convex match ID exists
     if (!match.convexMatchId) {
-      Alert.alert('エラー', 'まだサーバーと同期されていません。少し待ってから再度お試しください。');
+      Alert.alert(t('common.error'), t('matches.notSynced'));
       return;
     }
 
@@ -442,10 +444,10 @@ export default function MatchesScreen() {
         matchId: match.convexMatchId as any,
         partnerSelectedDates: selectedDates,
       });
-      Alert.alert('保存', '候補日を一時保存しました');
+      Alert.alert(t('common.success'), t('matches.candidateSaved'));
     } catch (e) {
       console.error('[DEBUG] Failed to save partner dates', e);
-      Alert.alert('エラー', '保存に失敗しました');
+      Alert.alert(t('common.error'), t('matches.saveFailed'));
     }
   };
 
@@ -455,16 +457,16 @@ export default function MatchesScreen() {
 
   const handleConfirmPlan = async () => {
     if (!finalDate) {
-      Alert.alert('エラー', '最終的な日付を選択してください');
+      Alert.alert(t('common.error'), t('matches.selectFinalDate'));
       return;
     }
     if (!finalTime) {
-      Alert.alert('エラー', '集合時間を入力してください');
+      Alert.alert(t('common.error'), t('matches.enterMeetingTime'));
       return;
     }
 
     if (!profile?.coupleId || !convexId) {
-      Alert.alert('エラー', 'ペアリングが必要です');
+      Alert.alert(t('common.error'), t('matches.pairingRequired'));
       return;
     }
 
@@ -485,12 +487,12 @@ export default function MatchesScreen() {
           meetingPlace,
           status: 'confirmed',
         });
-        Alert.alert('更新', 'デート計画を確定しました！');
+        Alert.alert(t('matches.updated'), t('matches.planConfirmed'));
       } else {
         // Create new plan in Convex
         await createPlan({
           coupleId: profile.coupleId,
-          title: planTitle || '無題の計画',
+          title: planTitle || t('matches.untitledPlan'),
           proposalIds: selectedMatchIds as any,
           candidateSlots,
           createdBy: convexId,
@@ -503,11 +505,11 @@ export default function MatchesScreen() {
         // Then update it to confirmed with final details
         // Note: We could combine this in a single mutation if needed
 
-        Alert.alert('成功', 'デート計画を確定しました！');
+        Alert.alert(t('common.success'), t('matches.planConfirmed'));
       }
     } catch (error) {
       console.error('Failed to save plan:', error);
-      Alert.alert('エラー', '計画の保存に失敗しました');
+      Alert.alert(t('common.error'), t('matches.planSaveFailed'));
     }
 
     setIsPlanningModalVisible(false);
@@ -551,7 +553,7 @@ export default function MatchesScreen() {
         <View style={styles.searchRow}>
           <View style={styles.searchBar}>
             <Ionicons name="search" size={20} color="#999" style={{ marginRight: 8 }} />
-            <TextInput placeholder="チケットを検索" placeholderTextColor="#999" style={styles.searchInput} />
+            <TextInput placeholder={t('matches.searchTickets')} placeholderTextColor="#999" style={styles.searchInput} />
           </View>
 
           <TouchableOpacity
@@ -569,7 +571,7 @@ export default function MatchesScreen() {
 
           return (
             <View style={styles.plansSection}>
-              <Text style={styles.plansTitle}>作成中のデート計画</Text>
+              <Text style={styles.plansTitle}>{t('matches.plansInProgress')}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.plansList}>
                 {visiblePlans.map((plan) => (
                   <TouchableOpacity key={plan.id} style={styles.planCard} onPress={() => openEditPlanModal(plan.id)}>
@@ -578,7 +580,7 @@ export default function MatchesScreen() {
                     </View>
                     <View style={styles.planInfo}>
                       <Text style={styles.planName} numberOfLines={1}>{plan.title}</Text>
-                      <Text style={styles.planMeta}>{plan.proposalIds.length}個の案 • {plan.candidateSlots.length}つの候補日</Text>
+                      <Text style={styles.planMeta}>{t('matches.proposalsCount', { count: plan.proposalIds.length })} • {t('matches.candidatesCount', { count: plan.candidateSlots.length })}</Text>
                     </View>
                   </TouchableOpacity>
                 ))}
@@ -604,8 +606,8 @@ export default function MatchesScreen() {
         stickySectionHeadersEnabled={false}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>チケットがまだありません</Text>
-            <Text style={styles.emptyStateSubtext}>カタログから行きたい場所を探しましょう！</Text>
+            <Text style={styles.emptyStateText}>{t('matches.noTickets')}</Text>
+            <Text style={styles.emptyStateSubtext}>{t('matches.noTicketsSubtext')}</Text>
           </View>
         }
       />
@@ -624,7 +626,7 @@ export default function MatchesScreen() {
             </View>
             <View style={styles.modalControls}>
               <TouchableOpacity onPress={() => setIsPlanningModalVisible(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Text style={styles.modalCloseText}>キャンセル</Text>
+                <Text style={styles.modalCloseText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               {/* Progress Tracker Title */}
 
@@ -632,17 +634,17 @@ export default function MatchesScreen() {
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 {step === 2 && (
                   <TouchableOpacity onPress={handleTemporarySave} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ marginRight: 16 }}>
-                    <Text style={{ fontSize: 16, fontWeight: '600', color: '#666' }}>一時保存</Text>
+                    <Text style={{ fontSize: 16, fontWeight: '600', color: '#666' }}>{t('matches.tempSave')}</Text>
                   </TouchableOpacity>
                 )}
 
                 {step < 3 ? (
                   <TouchableOpacity onPress={handleNextStep} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                    <Text style={styles.modalSaveText}>次へ</Text>
+                    <Text style={styles.modalSaveText}>{t('common.next')}</Text>
                   </TouchableOpacity>
                 ) : (
                   <TouchableOpacity onPress={handleConfirmPlan} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                    <Text style={styles.modalSaveText}>確定</Text>
+                    <Text style={styles.modalSaveText}>{t('common.confirm')}</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -651,9 +653,9 @@ export default function MatchesScreen() {
             {/* Progress Tracker */}
             <View style={styles.progressTracker}>
               {[
-                { label: '案を決める', icon: 'bulb-outline' },
-                { label: '日程を選ぶ', icon: 'calendar-outline' },
-                { label: '確定する', icon: 'checkmark-circle-outline' }
+                { label: t('matches.decidePlan'), icon: 'bulb-outline' },
+                { label: t('matches.selectSchedule'), icon: 'calendar-outline' },
+                { label: t('matches.confirmPlan'), icon: 'checkmark-circle-outline' }
               ].map((item, index) => {
                 const stepNumber = index + 1;
                 const isActive = step === stepNumber;
@@ -685,21 +687,21 @@ export default function MatchesScreen() {
 
             {step === 1 && (
               <>
-                <Text style={styles.stepHeader}>デート案を決めましょう</Text>
+                <Text style={styles.stepHeader}>{t('matches.chooseProposal')}</Text>
                 {/* Title Input */}
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>計画タイトル</Text>
+                  <Text style={styles.inputLabel}>{t('matches.planTitle')}</Text>
                   <TextInput
                     style={styles.modalTextInput}
                     value={planTitle}
                     onChangeText={setPlanTitle}
-                    placeholder="例: 週末のディナーデート"
+                    placeholder={t('matches.planTitlePlaceholder')}
                   />
                 </View>
 
                 {/* Selected Proposals */}
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>デート案を組み合わせる</Text>
+                  <Text style={styles.inputLabel}>{t('matches.combineProposals')}</Text>
                   <View style={styles.selectedProposalsList}>
                     {selectedMatchIds.map(id => {
                       const match = matches.find(m => m.id === id);
@@ -716,7 +718,7 @@ export default function MatchesScreen() {
                     })}
                   </View>
 
-                  <Text style={styles.subLabel}>他の案を追加して組み合わせる</Text>
+                  <Text style={styles.subLabel}>{t('matches.addOtherProposal')}</Text>
 
                   {CATEGORIES.map(category => {
                     const categoryMatches = matches
@@ -737,7 +739,7 @@ export default function MatchesScreen() {
                       <View key={category.id} style={styles.categoryRow}>
                         <View style={styles.categoryHeader}>
                           <Ionicons name={category.icon as any} size={16} color={category.color} style={{ marginRight: 6 }} />
-                          <Text style={[styles.categoryTitle, { color: category.color }]}>{category.label}</Text>
+                          <Text style={[styles.categoryTitle, { color: category.color }]}>{t(category.labelKey)}</Text>
                         </View>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.otherMatchesScroll} contentContainerStyle={styles.otherMatchesContent}>
                           {categoryMatches.map(match => (
@@ -773,7 +775,7 @@ export default function MatchesScreen() {
                       <View style={styles.categoryRow}>
                         <View style={styles.categoryHeader}>
                           <Ionicons name="help-circle" size={16} color="#888" style={{ marginRight: 6 }} />
-                          <Text style={[styles.categoryTitle, { color: '#888' }]}>その他</Text>
+                          <Text style={[styles.categoryTitle, { color: '#888' }]}>{t('matches.other')}</Text>
                         </View>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.otherMatchesScroll} contentContainerStyle={styles.otherMatchesContent}>
                           {otherMatches.map(match => (
@@ -799,10 +801,10 @@ export default function MatchesScreen() {
                   <TouchableOpacity onPress={handleBackStep} style={styles.backButton}>
                     <Ionicons name="chevron-back" size={24} color="#333" />
                   </TouchableOpacity>
-                  <Text style={styles.stepHeader}>候補日を選びましょう</Text>
+                  <Text style={styles.stepHeader}>{t('matches.chooseDate')}</Text>
                 </View>
 
-                <Text style={styles.stepDesc}>あなたの都合の良い日を選択してください。</Text>
+                <Text style={styles.stepDesc}>{t('matches.chooseDateDesc')}</Text>
 
                 <View style={styles.inputGroup}>
                   <MultiSelectCalendar
@@ -820,13 +822,13 @@ export default function MatchesScreen() {
                   <TouchableOpacity onPress={handleBackStep} style={styles.backButton}>
                     <Ionicons name="chevron-back" size={24} color="#333" />
                   </TouchableOpacity>
-                  <Text style={styles.stepHeader}>最終決定</Text>
+                  <Text style={styles.stepHeader}>{t('matches.finalDecision')}</Text>
                 </View>
 
-                <Text style={styles.stepDesc}>お互いの都合が合う日程から、決定しましょう。</Text>
+                <Text style={styles.stepDesc}>{t('matches.confirmDateDesc')}</Text>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>日程（マッチした候補日）</Text>
+                  <Text style={styles.inputLabel}>{t('matches.matchedDate')}</Text>
                   {commonDates.length > 0 ? (
                     <View style={styles.chipContainer}>
                       {commonDates.map(date => (
@@ -843,7 +845,7 @@ export default function MatchesScreen() {
                       ))}
                     </View>
                   ) : (
-                    <Text style={styles.errorText}>お互いの日程が合いませんでした。候補日を調整してください。</Text>
+                    <Text style={styles.errorText}>{t('matches.noMatchedDate')}</Text>
                   )}
 
                   {/* Fallback if no overlapping dates, allow picking any selected date? 
@@ -856,7 +858,7 @@ export default function MatchesScreen() {
                 <View style={styles.inputGroup}>
                   <NativeDateTimePicker
                     mode="time"
-                    title="集合時間"
+                    title={t('matches.meetingTime')}
                     value={(() => {
                       const d = new Date();
                       if (finalTime) {
@@ -878,12 +880,12 @@ export default function MatchesScreen() {
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>集合場所 (任意)</Text>
+                  <Text style={styles.inputLabel}>{t('matches.meetingPlace')}</Text>
                   <TextInput
                     style={styles.modalTextInput}
                     value={meetingPlace}
                     onChangeText={setMeetingPlace}
-                    placeholder="例: 六本木駅 4番出口"
+                    placeholder={t('matches.meetingPlacePlaceholder')}
                   />
                 </View>
               </>
@@ -916,7 +918,7 @@ export default function MatchesScreen() {
 
           <View style={styles.bottomSheetTitleRow}>
             <Ionicons name="time-outline" size={20} color="#333" />
-            <Text style={styles.bottomSheetTitle}>スワイプ履歴</Text>
+            <Text style={styles.bottomSheetTitle}>{t('matches.swipeHistory')}</Text>
           </View>
 
           <ScrollView
@@ -946,7 +948,7 @@ export default function MatchesScreen() {
               ))
             ) : (
               <View style={styles.emptyHistory}>
-                <Text style={styles.emptyHistoryText}>履歴がまだありません</Text>
+                <Text style={styles.emptyHistoryText}>{t('matches.noHistory')}</Text>
               </View>
             )}
           </ScrollView>

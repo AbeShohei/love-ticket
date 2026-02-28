@@ -8,6 +8,7 @@ import { Link, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../providers/AuthProvider';
 
 // Warm up Android browser for OAuth
@@ -19,6 +20,7 @@ export default function Login() {
     const [loading, setLoading] = useState(false);
     const { signIn } = useAuth();
     const router = useRouter();
+    const { t } = useTranslation();
 
     // Google OAuth
     const { startOAuthFlow: startGoogleOAuth } = useOAuth({ strategy: 'oauth_google' });
@@ -27,7 +29,7 @@ export default function Login() {
 
     async function handleSignIn() {
         if (!email.trim() || !password.trim()) {
-            Alert.alert('エラー', 'メールアドレスとパスワードを入力してください');
+            Alert.alert(t('common.error'), t('auth.enterEmailAndPassword'));
             return;
         }
 
@@ -46,11 +48,11 @@ export default function Login() {
             if (Platform.OS !== 'web') {
                 await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             }
-            const message = error.message || 'ログインに失敗しました';
+            const message = error.message || t('auth.loginFailed');
             if (Platform.OS === 'web') {
                 alert(message);
             } else {
-                Alert.alert('ログインエラー', message);
+                Alert.alert(t('auth.loginError'), message);
             }
         } finally {
             setLoading(false);
@@ -71,7 +73,7 @@ export default function Login() {
             }
         } catch (error: any) {
             console.error('Google OAuth error:', error);
-            Alert.alert('エラー', 'Google ログインに失敗しました');
+            Alert.alert(t('common.error'), t('auth.googleLoginFailed'));
         } finally {
             setLoading(false);
         }
@@ -91,7 +93,7 @@ export default function Login() {
             }
         } catch (error: any) {
             console.error('Apple OAuth error:', error);
-            Alert.alert('エラー', 'Apple ログインに失敗しました');
+            Alert.alert(t('common.error'), t('auth.appleLoginFailed'));
         } finally {
             setLoading(false);
         }
@@ -120,12 +122,12 @@ export default function Login() {
 
                 {/* Title in script style */}
                 <Text style={styles.title}>LoveTicket</Text>
-                <Text style={styles.subtitle}>二人の特別な時間を、ここから</Text>
+                <Text style={styles.subtitle}>{t('auth.loginSubtitle')}</Text>
 
                 <View style={styles.inputContainer}>
                     <TextInput
                         style={styles.input}
-                        placeholder="メールアドレス"
+                        placeholder={t('auth.email')}
                         placeholderTextColor="#666"
                         value={email}
                         onChangeText={setEmail}
@@ -135,7 +137,7 @@ export default function Login() {
                     />
                     <TextInput
                         style={styles.input}
-                        placeholder="パスワード"
+                        placeholder={t('auth.password')}
                         placeholderTextColor="#666"
                         value={password}
                         onChangeText={setPassword}
@@ -159,7 +161,7 @@ export default function Login() {
                         {loading ? (
                             <ActivityIndicator color="#fff" />
                         ) : (
-                            <Text style={styles.buttonText}>ログイン</Text>
+                            <Text style={styles.buttonText}>{t('auth.login')}</Text>
                         )}
                     </LinearGradient>
                 </TouchableOpacity>
@@ -167,7 +169,7 @@ export default function Login() {
                 {/* Divider */}
                 <View style={styles.divider}>
                     <View style={styles.dividerLine} />
-                    <Text style={styles.dividerText}>または</Text>
+                    <Text style={styles.dividerText}>{t('common.or')}</Text>
                     <View style={styles.dividerLine} />
                 </View>
 
@@ -178,7 +180,7 @@ export default function Login() {
                     disabled={loading}
                 >
                     <FontAwesome5 name="google" size={18} color="#4285F4" style={styles.socialIcon} />
-                    <Text style={styles.socialButtonText}>Googleで続ける</Text>
+                    <Text style={styles.socialButtonText}>{t('auth.continueWithGoogle')}</Text>
                 </TouchableOpacity>
 
                 {Platform.OS === 'ios' && (
@@ -188,15 +190,15 @@ export default function Login() {
                         disabled={loading}
                     >
                         <FontAwesome5 name="apple" size={20} color="#fff" style={styles.socialIcon} />
-                        <Text style={[styles.socialButtonText, styles.appleButtonText]}>Appleで続ける</Text>
+                        <Text style={[styles.socialButtonText, styles.appleButtonText]}>{t('auth.continueWithApple')}</Text>
                     </TouchableOpacity>
                 )}
 
                 <View style={styles.footer}>
-                    <Text style={styles.footerText}>アカウントをお持ちでないですか？</Text>
+                    <Text style={styles.footerText}>{t('auth.noAccount')}</Text>
                     <Link href="/register" asChild>
                         <TouchableOpacity onPress={() => Platform.OS !== 'web' && Haptics.selectionAsync()}>
-                            <Text style={styles.link}>新規登録</Text>
+                            <Text style={styles.link}>{t('auth.register')}</Text>
                         </TouchableOpacity>
                     </Link>
                 </View>

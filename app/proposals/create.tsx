@@ -23,6 +23,7 @@ import {
     View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { CATEGORIES } from '../../constants/Presets';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -48,6 +49,7 @@ export default function CreateProposal() {
     const params = useLocalSearchParams<{ category?: string }>();
     const insets = useSafeAreaInsets();
     const { profile, convexId } = useAuth();
+    const { t } = useTranslation();
 
     // Convex mutations
     const createProposal = useMutation(api.proposals.create);
@@ -134,17 +136,17 @@ export default function CreateProposal() {
 
     const submit = async () => {
         if (!title) {
-            Alert.alert('エラー', 'タイトルを入力してください');
+            Alert.alert(t('common.error'), t('proposals.titleRequired'));
             return;
         }
 
         if (images.length === 0) {
-            Alert.alert('エラー', '写真を少なくとも1枚追加してください');
+            Alert.alert(t('common.error'), t('proposals.imageRequired'));
             return;
         }
 
         if (!profile?.coupleId || !convexId) {
-            Alert.alert('エラー', 'ペアリングが必要です');
+            Alert.alert(t('common.error'), t('proposals.pairingRequired'));
             return;
         }
 
@@ -198,12 +200,12 @@ export default function CreateProposal() {
                 createdBy: convexId,
             });
 
-            Alert.alert('成功', 'デート案を作成しました！', [
-                { text: 'OK', onPress: () => router.back() }
+            Alert.alert(t('common.success'), t('proposals.createSuccess'), [
+                { text: t('common.ok'), onPress: () => router.back() }
             ]);
         } catch (error) {
             console.error('Failed to create proposal:', error);
-            Alert.alert('エラー', 'デート案の作成に失敗しました');
+            Alert.alert(t('common.error'), t('proposals.createFailed'));
         } finally {
             setLoading(false);
         }
@@ -260,7 +262,7 @@ export default function CreateProposal() {
                                     ) : (
                                         <TouchableOpacity style={styles.placeholderContainer} onPress={pickImages}>
                                             <Ionicons name="images-outline" size={48} color="#fff" />
-                                            <Text style={styles.placeholderText}>写真を追加</Text>
+                                            <Text style={styles.placeholderText}>{t('proposals.addImage')}</Text>
                                         </TouchableOpacity>
                                     )}
                                 </ScrollView>
@@ -301,7 +303,7 @@ export default function CreateProposal() {
                                     <>
                                         <TextInput
                                             style={styles.titleInput}
-                                            placeholder="タイトルを入力..."
+                                            placeholder={t('proposals.titlePlaceholder')}
                                             placeholderTextColor="rgba(255,255,255,0.7)"
                                             value={title}
                                             onChangeText={setTitle}
@@ -324,7 +326,7 @@ export default function CreateProposal() {
                                                     color={'#fff'}
                                                 />
                                                 <Text style={[styles.categoryText, { color: '#fff' }]}>
-                                                    {activeCategory.label}
+                                                    {t(activeCategory.labelKey)}
                                                 </Text>
                                             </View>
                                         </View>
@@ -337,7 +339,7 @@ export default function CreateProposal() {
                                         <View style={styles.descContainer}>
                                             <TextInput
                                                 style={styles.descInput}
-                                                placeholder="詳細を入力してください..."
+                                                placeholder={t('proposals.descriptionPlaceholder')}
                                                 placeholderTextColor="rgba(255,255,255,0.7)"
                                                 value={description}
                                                 onChangeText={setDescription}
@@ -353,7 +355,7 @@ export default function CreateProposal() {
                                                 <Ionicons name="location" size={20} color="#fff" style={styles.metaIcon} />
                                                 <TextInput
                                                     style={styles.metaInput}
-                                                    placeholder="場所"
+                                                    placeholder={t('proposals.locationPlaceholder')}
                                                     placeholderTextColor="rgba(255,255,255,0.5)"
                                                     value={location}
                                                     onChangeText={setLocation}
@@ -366,7 +368,7 @@ export default function CreateProposal() {
                                                 <Ionicons name="cash" size={20} color="#fff" style={styles.metaIcon} />
                                                 <TextInput
                                                     style={styles.metaInput}
-                                                    placeholder="予算"
+                                                    placeholder={t('proposals.pricePlaceholder')}
                                                     placeholderTextColor="rgba(255,255,255,0.5)"
                                                     value={price}
                                                     onChangeText={setPrice}
@@ -379,7 +381,7 @@ export default function CreateProposal() {
                                                 <Ionicons name="link" size={20} color="#fff" style={styles.metaIcon} />
                                                 <TextInput
                                                     style={styles.metaInput}
-                                                    placeholder="URL"
+                                                    placeholder={t('proposals.url')}
                                                     placeholderTextColor="rgba(255,255,255,0.5)"
                                                     value={url}
                                                     onChangeText={setUrl}
@@ -398,7 +400,7 @@ export default function CreateProposal() {
                 ) : (
                     <View style={{ padding: 20 }}>
                         <Text style={{ color: '#fff', fontSize: 24, fontWeight: 'bold', marginBottom: 20 }}>
-                            候補日を選択してください
+                            {t('proposals.selectDatesTitle')}
                         </Text>
                         <MultiSelectCalendar
                             selectedDates={candidateDates}
@@ -413,11 +415,11 @@ export default function CreateProposal() {
                     onPress={() => {
                         if (step === 'card') {
                             if (!title) {
-                                Alert.alert('エラー', 'タイトルを入力してください');
+                                Alert.alert(t('common.error'), t('proposals.titleRequired'));
                                 return;
                             }
                             if (images.length === 0) {
-                                Alert.alert('エラー', '写真を少なくとも1枚追加してください');
+                                Alert.alert(t('common.error'), t('proposals.imageRequired'));
                                 return;
                             }
                             setStep('dates');
@@ -431,7 +433,7 @@ export default function CreateProposal() {
                         <ActivityIndicator color="#fff" />
                     ) : (
                         <Text style={styles.submitButtonText}>
-                            {step === 'card' ? '次へ (日程選択)' : '提案を作成'}
+                            {step === 'card' ? t('proposals.nextToSchedule') : t('proposals.createProposal')}
                         </Text>
                     )}
                 </TouchableOpacity>
@@ -441,7 +443,7 @@ export default function CreateProposal() {
                         style={[styles.submitButton, { backgroundColor: 'transparent', marginTop: -10 }]}
                         onPress={() => setStep('card')}
                     >
-                        <Text style={[styles.submitButtonText, { color: '#aaa', fontSize: 14 }]}>戻る</Text>
+                        <Text style={[styles.submitButtonText, { color: '#aaa', fontSize: 14 }]}>{t('proposals.back')}</Text>
                     </TouchableOpacity>
                 )}
 

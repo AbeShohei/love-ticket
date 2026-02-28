@@ -17,6 +17,7 @@ export default defineSchema({
       v.literal("expired")
     )),
     subscriptionTier: v.optional(v.union(
+      v.literal("weekly"),
       v.literal("monthly"),
       v.literal("yearly")
     )),
@@ -26,6 +27,8 @@ export default defineSchema({
     notificationDate: v.optional(v.boolean()), // New proposal notifications
     notificationMatch: v.optional(v.boolean()), // Match notifications
     notificationPlan: v.optional(v.boolean()), // Plan update notifications
+    // Language settings
+    language: v.optional(v.union(v.literal("ja"), v.literal("en"))), // User's preferred language
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_clerk_id", ["clerkId"])

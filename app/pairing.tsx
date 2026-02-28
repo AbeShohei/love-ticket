@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import { Heart, QrCode, ScanLine } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, Modal, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../convex/_generated/api';
 import { Id } from '../convex/_generated/dataModel';
@@ -27,6 +28,7 @@ export default function Pairing() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const redirectAttempted = useRef(false);
+  const { t } = useTranslation();
 
   const createCouple = useMutation(api.couples.create);
   const joinCouple = useMutation(api.couples.join);
@@ -57,7 +59,7 @@ export default function Pairing() {
 
   async function handleCreateCouple() {
     if (!profile?._id) {
-      Alert.alert('エラー', 'ユーザー情報が見つかりません');
+      Alert.alert(t('common.error'), t('pairing.userNotFound'));
       return;
     }
 
@@ -68,7 +70,7 @@ export default function Pairing() {
       setCreatedCoupleId(result.coupleId);
     } catch (error) {
       console.error('Failed to create couple:', error);
-      Alert.alert('エラー', 'カップルの作成に失敗しました');
+      Alert.alert(t('common.error'), t('pairing.createFailed'));
     } finally {
       setLoading(false);
     }
@@ -76,17 +78,17 @@ export default function Pairing() {
 
   async function handleJoinCouple() {
     if (!inviteCode) {
-      Alert.alert('エラー', '招待コードを入力してください');
+      Alert.alert(t('common.error'), t('pairing.enterInviteCodeError'));
       return;
     }
 
     if (!isValidInviteCode(inviteCode)) {
-      Alert.alert('エラー', '招待コードの形式が正しくありません');
+      Alert.alert(t('common.error'), t('pairing.invalidInviteCodeFormat'));
       return;
     }
 
     if (!profile?._id) {
-      Alert.alert('エラー', 'ユーザー情報が見つかりません');
+      Alert.alert(t('common.error'), t('pairing.userNotFound'));
       return;
     }
 
@@ -100,7 +102,7 @@ export default function Pairing() {
       router.replace('/(tabs)/profile');
     } catch (error) {
       console.error('Failed to join couple:', error);
-      Alert.alert('エラー', '無効な招待コードです');
+      Alert.alert(t('common.error'), t('pairing.invalidInviteCode'));
     } finally {
       setLoading(false);
     }
@@ -110,18 +112,18 @@ export default function Pairing() {
     setShowQRScanner(false);
 
     if (!profile?._id) {
-      Alert.alert('エラー', 'ユーザー情報が見つかりません');
+      Alert.alert(t('common.error'), t('pairing.userNotFound'));
       return;
     }
 
     // QRコードから取得した招待コードで参加
     Alert.alert(
-      'ペアリング確認',
-      `招待コード: ${data.inviteCode} \n\nこのカップルに参加しますか？`,
+      t('pairing.pairingConfirmTitle'),
+      t('pairing.pairingConfirmMessage', { code: data.inviteCode }),
       [
-        { text: 'キャンセル', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: '参加する',
+          text: t('pairing.join'),
           onPress: () => performJoinCouple(data.inviteCode)
         }
       ]
@@ -130,13 +132,13 @@ export default function Pairing() {
 
   const copyToClipboard = async () => {
     await Clipboard.setStringAsync(generatedCode);
-    Alert.alert('コピーしました', '招待コードをクリップボードにコピーしました');
+    Alert.alert(t('pairing.copied'), t('pairing.copiedToClipboard'));
   };
 
   const shareCode = async () => {
     if (generatedCode) {
       await Share.share({
-        message: `Love Ticket に参加しよう！招待コード: ${generatedCode} `
+        message: t('pairing.shareMessage', { code: generatedCode })
       });
     }
   };
@@ -169,12 +171,12 @@ export default function Pairing() {
           }}
         >
           <Ionicons name="arrow-back" size={24} color="#666" />
-          <Text style={styles.backButtonText}>戻る</Text>
+          <Text style={styles.backButtonText}>{t('common.back')}</Text>
         </TouchableOpacity>
 
         <Heart size={64} color="#FF4B4B" style={{ marginBottom: 24 }} />
-        <Text style={styles.title}>カップルを作成しました！ 🎉</Text>
-        <Text style={styles.subtitle}>パートナーにQRコードや招待コードを送ってください：</Text>
+        <Text style={styles.title}>{t('pairing.coupleCreated')} 🎉</Text>
+        <Text style={styles.subtitle}>{t('pairing.shareCodeWithPartner')}</Text>
 
         <TouchableOpacity style={styles.codeContainer} onPress={copyToClipboard}>
           <Text style={styles.codeText}>{generatedCode}</Text>
@@ -183,21 +185,21 @@ export default function Pairing() {
         <View style={styles.actionButtonsRow}>
           <TouchableOpacity style={styles.qrButton} onPress={() => setShowQRModal(true)}>
             <QrCode size={24} color="#fd297b" />
-            <Text style={styles.qrButtonText}>QRコード</Text>
+            <Text style={styles.qrButtonText}>{t('pairing.qrCode')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.button} onPress={shareCode}>
-            <Text style={styles.buttonText}>コードを共有</Text>
+            <Text style={styles.buttonText}>{t('pairing.shareCode')}</Text>
           </TouchableOpacity>
         </View>
 
         <Text style={styles.waitingText}>
-          パートナーが参加するまでお待ちください...
+          {t('pairing.waitingForPartner')}
         </Text>
 
         {/* Debug status indicator */}
         <Text style={[styles.statusText, isStatusActive && styles.statusActive]}>
-          ステータス: {statusText} {isStatusActive ? '✅' : '⏳'}
+          {t('pairing.status')}: {statusText} {isStatusActive ? '✅' : '⏳'}
         </Text>
 
         {/* QR Code Display Modal */}
@@ -213,12 +215,12 @@ export default function Pairing() {
                 style={styles.qrModalClose}
                 onPress={() => setShowQRModal(false)}
               >
-                <Text style={styles.qrModalCloseText}>閉じる</Text>
+                <Text style={styles.qrModalCloseText}>{t('common.close')}</Text>
               </TouchableOpacity>
 
-              <Text style={styles.qrModalTitle}>QRコードでペアリング</Text>
+              <Text style={styles.qrModalTitle}>{t('pairing.qrPairingTitle')}</Text>
               <Text style={styles.qrModalSubtitle}>
-                パートナーにこのQRコードをスキャンしてもらってください
+                {t('pairing.qrPairingSubtitle')}
               </Text>
 
               <View style={styles.qrCodeContainer}>
@@ -233,7 +235,7 @@ export default function Pairing() {
                 )}
               </View >
 
-              <Text style={styles.inviteCodeLabel}>招待コード</Text>
+              <Text style={styles.inviteCodeLabel}>{t('pairing.inviteCode')}</Text>
               <Text style={styles.inviteCodeText}>{generatedCode}</Text>
             </View >
           </View >
@@ -244,46 +246,46 @@ export default function Pairing() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <Text style={styles.title}>ペアリング</Text>
-      <Text style={styles.subtitle}>パートナーと連携しましょう</Text>
+      <Text style={styles.title}>{t('pairing.title')}</Text>
+      <Text style={styles.subtitle}>{t('pairing.subtitle')}</Text>
 
       <View style={styles.toggleContainer}>
         <TouchableOpacity
           style={[styles.toggleButton, mode === 'create' && styles.activeToggle]}
           onPress={() => setMode('create')}
         >
-          <Text style={[styles.toggleText, mode === 'create' && styles.activeToggleText]}>新しく始める</Text>
+          <Text style={[styles.toggleText, mode === 'create' && styles.activeToggleText]}>{t('pairing.createNew')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.toggleButton, mode === 'join' && styles.activeToggle]}
           onPress={() => setMode('join')}
         >
-          <Text style={[styles.toggleText, mode === 'join' && styles.activeToggleText]}>参加する</Text>
+          <Text style={[styles.toggleText, mode === 'join' && styles.activeToggleText]}>{t('pairing.join')}</Text>
         </TouchableOpacity>
       </View>
 
       {mode === 'create' ? (
         <View style={styles.content}>
           <Text style={styles.description}>
-            新しくカップル専用のスペースを作成し、パートナーに共有するための招待コードを発行します。
+            {t('pairing.createDescription')}
           </Text>
           <TouchableOpacity
             style={styles.button}
             onPress={handleCreateCouple}
             disabled={loading}
           >
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>招待コードを発行する</Text>}
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>{t('pairing.generateCode')}</Text>}
           </TouchableOpacity>
         </View>
       ) : (
         <View style={styles.content}>
           <Text style={styles.description}>
-            パートナーから受け取ったQRコードをスキャンするか、招待コードを入力してください。
+            {t('pairing.joinDescription')}
           </Text>
 
           <TextInput
             style={styles.input}
-            placeholder="招待コードを入力 (例: A1B2C3)"
+            placeholder={t('pairing.enterInviteCode')}
             placeholderTextColor="#aaa"
             value={inviteCode}
             onChangeText={setInviteCode}
@@ -295,12 +297,12 @@ export default function Pairing() {
             onPress={handleJoinCouple}
             disabled={loading || !inviteCode}
           >
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>カップルに参加する</Text>}
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>{t('pairing.joinCouple')}</Text>}
           </TouchableOpacity>
 
           <View style={styles.divider}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>または</Text>
+            <Text style={styles.dividerText}>{t('common.or')}</Text>
             <View style={styles.dividerLine} />
           </View>
 
@@ -310,7 +312,7 @@ export default function Pairing() {
             onPress={() => setShowQRScanner(true)}
           >
             <ScanLine size={24} color="#fd297b" />
-            <Text style={styles.qrScanButtonText}>QRコードをスキャン</Text>
+            <Text style={styles.qrScanButtonText}>{t('pairing.scanQRCode')}</Text>
           </TouchableOpacity>
         </View>
       )}

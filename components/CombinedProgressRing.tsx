@@ -7,6 +7,7 @@ import Animated, {
     withSpring
 } from 'react-native-reanimated';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
+import { useTranslation } from 'react-i18next';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -37,7 +38,11 @@ export const CombinedProgressRing: React.FC<CombinedProgressRingProps> = ({
     myAvatar,
     partnerAvatar,
     size = 240,
+    compact = false,
+    showDaysTogether = true
 }) => {
+    const { t } = useTranslation();
+
     // Aesthetics
     const outerStrokeWidth = 8;
     const innerStrokeWidth = 24;
@@ -181,10 +186,10 @@ export const CombinedProgressRing: React.FC<CombinedProgressRingProps> = ({
                         </View>
                     </View>
 
-                    <Text style={styles.daysText}>付き合って</Text>
+                    <Text style={styles.daysText}>{t('stats.daysTogether')}</Text>
                     <View style={styles.daysValueRow}>
                         <Text style={styles.daysValue}>{daysTogether}</Text>
-                        <Text style={styles.daysLabel}>日目</Text>
+                        <Text style={styles.daysLabel}>{t('calendar.days')}</Text>
                     </View>
                 </View>
             </View>
@@ -194,7 +199,7 @@ export const CombinedProgressRing: React.FC<CombinedProgressRingProps> = ({
                 <View style={styles.statItem}>
                     <View style={[styles.statDot, { backgroundColor: rings.sent.color }]} />
                     <Text style={styles.statValue}>{rings.sent.value}</Text>
-                    <Text style={styles.statLabel}>送った</Text>
+                    <Text style={styles.statLabel}>{t('stats.sent')}</Text>
                 </View>
 
                 <View style={styles.statDivider} />
@@ -202,7 +207,7 @@ export const CombinedProgressRing: React.FC<CombinedProgressRingProps> = ({
                 <View style={styles.statItem}>
                     <View style={[styles.statDot, { backgroundColor: rings.received.color }]} />
                     <Text style={styles.statValue}>{rings.received.value}</Text>
-                    <Text style={styles.statLabel}>届いた</Text>
+                    <Text style={styles.statLabel}>{t('stats.received')}</Text>
                 </View>
 
                 <View style={styles.statDivider} />
@@ -210,7 +215,7 @@ export const CombinedProgressRing: React.FC<CombinedProgressRingProps> = ({
                 <View style={styles.statItem}>
                     <View style={[styles.statDot, { backgroundColor: rings.dates.color }]} />
                     <Text style={styles.statValue}>{rings.dates.value}</Text>
-                    <Text style={styles.statLabel}>達成</Text>
+                    <Text style={styles.statLabel}>{t('stats.achieved')}</Text>
                 </View>
             </View>
         </View>

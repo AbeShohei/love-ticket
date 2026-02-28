@@ -18,6 +18,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 type ProfileEditModalProps = {
     visible: boolean;
@@ -26,6 +27,7 @@ type ProfileEditModalProps = {
 
 export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
     const { profile, userId, displayName: currentDisplayName, avatarUrl: currentAvatarUrl } = useAuth();
+    const { t } = useTranslation();
     const [displayName, setDisplayName] = useState('');
     const [avatarUri, setAvatarUri] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -46,7 +48,6 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsEditing: true,
-            allowsEditing: true,
             aspect: [1, 1],
             quality: 0.5,
         });
@@ -58,9 +59,9 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
             if (asset.fileSize && asset.fileSize > MAX_IMAGE_SIZE) {
                 const sizeMB = (asset.fileSize / (1024 * 1024)).toFixed(2);
                 Alert.alert(
-                    '画像が大きすぎます',
-                    `画像サイズは500KB以下にしてください。\n現在のサイズ: ${sizeMB}MB\n\n他の画像を選択するか、圧縮してから再度お試しください。`,
-                    [{ text: 'OK' }]
+                    t('profileEdit.imageTooLarge'),
+                    t('profileEdit.imageSizeMessage', { size: sizeMB }),
+                    [{ text: t('common.ok') }]
                 );
                 return;
             }
@@ -71,12 +72,12 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
 
     const handleSave = async () => {
         if (!displayName.trim()) {
-            Alert.alert('エラー', '表示名を入力してください');
+            Alert.alert(t('common.error'), t('profileEdit.nameRequired'));
             return;
         }
 
         if (displayName.trim().length > 12) {
-            Alert.alert('エラー', '表示名は12文字以内で入力してください');
+            Alert.alert(t('common.error'), t('profileEdit.nameMaxLength'));
             return;
         }
 
@@ -89,7 +90,7 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
             const clerkId = userId || profile?.id;
 
             if (!clerkId) {
-                Alert.alert('エラー', 'ユーザー情報が見つかりません');
+                Alert.alert(t('common.error'), t('profileEdit.userNotFound'));
                 return;
             }
 
@@ -114,9 +115,9 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
                     if (blob.size > MAX_IMAGE_SIZE) {
                         const sizeMB = (blob.size / (1024 * 1024)).toFixed(2);
                         Alert.alert(
-                            '画像が大きすぎます',
-                            `画像サイズは500KB以下にしてください。\n現在のサイズ: ${sizeMB}MB`,
-                            [{ text: 'OK' }]
+                            t('profileEdit.imageTooLarge'),
+                            t('profileEdit.imageSizeMessage', { size: sizeMB }),
+                            [{ text: t('common.ok') }]
                         );
                         setLoading(false);
                         return;
@@ -138,7 +139,7 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
                     console.log('[ProfileEdit] Upload successful, storageId:', storageId);
                 } catch (uploadError) {
                     console.error('[ProfileEdit] Image upload failed:', uploadError);
-                    Alert.alert('エラー', '画像のアップロードに失敗しました。');
+                    Alert.alert(t('common.error'), t('profileEdit.uploadFailed'));
                     setLoading(false);
                     return;
                 }
@@ -158,13 +159,13 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             }
 
-            Alert.alert('成功', 'プロフィールを更新しました', [
-                { text: 'OK', onPress: onClose }
+            Alert.alert(t('common.success'), t('profileEdit.updateSuccess'), [
+                { text: t('common.ok'), onPress: onClose }
             ]);
         } catch (error: any) {
             console.error('[ProfileEdit] Failed to update profile:', error);
-            const errorMessage = error.message || '不明なエラーが発生しました';
-            Alert.alert('エラー', `プロフィールの更新に失敗しました: ${errorMessage}`);
+            const errorMessage = error.message || t('profileEdit.unknownError');
+            Alert.alert(t('common.error'), t('profileEdit.updateFailed', { error: errorMessage }));
         } finally {
             setLoading(false);
         }
@@ -183,14 +184,14 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
             >
                 <View style={styles.header}>
                     <TouchableOpacity onPress={onClose}>
-                        <Text style={styles.cancelButton}>キャンセル</Text>
+                        <Text style={styles.cancelButton}>{t('common.cancel')}</Text>
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>プロフィール編集</Text>
+                    <Text style={styles.headerTitle}>{t('profileEdit.title')}</Text>
                     <TouchableOpacity onPress={handleSave} disabled={loading}>
                         {loading ? (
                             <ActivityIndicator color="#FF4B4B" />
                         ) : (
-                            <Text style={styles.saveButton}>保存</Text>
+                            <Text style={styles.saveButton}>{t('common.save')}</Text>
                         )}
                     </TouchableOpacity>
                 </View>
@@ -208,15 +209,15 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
                             <Ionicons name="camera" size={16} color="#fff" />
                         </View>
                     </TouchableOpacity>
-                    <Text style={styles.avatarHint}>タップして写真を変更</Text>
+                    <Text style={styles.avatarHint}>{t('profileEdit.tapToChange')}</Text>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>表示名</Text>
+                        <Text style={styles.label}>{t('profileEdit.displayName')}</Text>
                         <TextInput
                             style={styles.input}
                             value={displayName}
                             onChangeText={setDisplayName}
-                            placeholder="表示名を入力"
+                            placeholder={t('profileEdit.displayNamePlaceholder')}
                             placeholderTextColor="#999"
                             maxLength={12}
                         />

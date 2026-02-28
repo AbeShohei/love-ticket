@@ -5,8 +5,10 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 import { Heart } from 'lucide-react-native';
 import { api } from '@/convex/_generated/api';
+import { useTranslation } from 'react-i18next';
 
 export default function PairDeepLink() {
+  const { t } = useTranslation();
   const { userId, inviteCode } = useLocalSearchParams<{ userId: string; inviteCode: string }>();
   const { profile } = useAuth();
   const router = useRouter();
@@ -35,7 +37,7 @@ export default function PairDeepLink() {
       }
 
       if (!coupleInfo) {
-        setError('無効な招待コードです');
+        setError(t('pairing.invalidInviteCode'));
         setLoading(false);
         return;
       }
@@ -47,7 +49,7 @@ export default function PairDeepLink() {
           router.replace('/' as any);
           return;
         } else {
-          setError('既に他のカップルに参加しています');
+          setError(t('pairing.alreadyInCouple'));
           setLoading(false);
           return;
         }
@@ -59,20 +61,20 @@ export default function PairDeepLink() {
         router.replace('/' as any);
       } catch (err) {
         console.error('Failed to join couple:', err);
-        setError('ペアリングに失敗しました');
+        setError(t('pairing.pairingFailed'));
       } finally {
         setLoading(false);
       }
     }
 
     handlePairing();
-  }, [inviteCode, profile?._id, coupleInfo]);
+  }, [inviteCode, profile?._id, coupleInfo, t]);
 
   if (loading || coupleInfo === undefined) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="#fd297b" />
-        <Text style={styles.loadingText}>ペアリング中...</Text>
+        <Text style={styles.loadingText}>{t('pairing.pairingInProgress')}</Text>
       </View>
     );
   }
@@ -81,10 +83,10 @@ export default function PairDeepLink() {
     return (
       <View style={styles.container}>
         <Heart size={64} color="#FF4B4B" style={{ marginBottom: 24 }} />
-        <Text style={styles.errorTitle}>エラー</Text>
+        <Text style={styles.errorTitle}>{t('common.error')}</Text>
         <Text style={styles.errorText}>{error}</Text>
         <Text style={styles.hint} onPress={() => router.replace('/pairing')}>
-          手動で招待コードを入力する
+          {t('pairing.enterInviteCodeManually')}
         </Text>
       </View>
     );

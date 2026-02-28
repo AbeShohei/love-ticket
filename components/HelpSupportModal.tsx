@@ -11,38 +11,40 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
     visible: boolean;
     onClose: () => void;
 };
 
-const FAQ_ITEMS = [
-    {
-        question: 'パートナーとの連携方法は？',
-        answer: 'プロフィール画面の「連携」ボタンをタップし、表示されるコードをパートナーに共有してください。パートナーが同じ画面からコードを入力すると連携が完了します。',
-    },
-    {
-        question: 'デートプランはどうやって提案しますか？',
-        answer: 'ホーム画面のデート候補からお気に入りのプランをスワイプしてください。パートナーも同じプランをお気に入りにすると「マッチ」となります。',
-    },
-    {
-        question: '通知が届きません',
-        answer: 'プロフィール画面の設定 > 通知設定から通知がONになっていることを確認してください。また、端末の設定からアプリの通知が許可されているか確認してください。',
-    },
-    {
-        question: 'アカウントを削除したい',
-        answer: 'プロフィール画面の設定 > プライバシーから「アカウント・データの削除を依頼」をタップしてください。サポートチームが対応いたします。',
-    },
-    {
-        question: 'プレミアムプランについて',
-        answer: 'プレミアムプランに登録すると、広告の非表示やデートプランの無制限提案など、より充実した機能をご利用いただけます。プロフィール画面のバナーから詳細を確認できます。',
-    },
-];
-
 export function HelpSupportModal({ visible, onClose }: Props) {
     const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
     const appVersion = Constants.expoConfig?.version || '1.0.0';
+    const { t } = useTranslation();
+
+    const FAQ_ITEMS = [
+        {
+            question: t('help.faqPairingQuestion'),
+            answer: t('help.faqPairingAnswer'),
+        },
+        {
+            question: t('help.faqProposalQuestion'),
+            answer: t('help.faqProposalAnswer'),
+        },
+        {
+            question: t('help.faqNotificationQuestion'),
+            answer: t('help.faqNotificationAnswer'),
+        },
+        {
+            question: t('help.faqDeleteQuestion'),
+            answer: t('help.faqDeleteAnswer'),
+        },
+        {
+            question: t('help.faqPremiumQuestion'),
+            answer: t('help.faqPremiumAnswer'),
+        },
+    ];
 
     const toggleFaq = (index: number) => {
         setExpandedIndex(expandedIndex === index ? null : index);
@@ -57,14 +59,14 @@ export function HelpSupportModal({ visible, onClose }: Props) {
         >
             <SafeAreaView style={styles.container}>
                 <View style={styles.header}>
-                    <Text style={styles.headerTitle}>ヘルプとサポート</Text>
+                    <Text style={styles.headerTitle}>{t('help.title')}</Text>
                     <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
                         <Ionicons name="close" size={24} color="#333" />
                     </TouchableOpacity>
                 </View>
                 <ScrollView style={styles.content}>
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>よくある質問</Text>
+                        <Text style={styles.sectionTitle}>{t('help.faqSection')}</Text>
                         {FAQ_ITEMS.map((item, index) => (
                             <View key={index} style={styles.faqItem}>
                                 <TouchableOpacity
@@ -88,25 +90,25 @@ export function HelpSupportModal({ visible, onClose }: Props) {
                     </View>
 
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>お問い合わせ</Text>
+                        <Text style={styles.sectionTitle}>{t('help.contactSection')}</Text>
                         <TouchableOpacity
                             style={styles.linkRow}
                             onPress={() =>
                                 Linking.openURL(
-                                    'mailto:support@love-ticket.app?subject=お問い合わせ'
+                                    `mailto:support@love-ticket.app?subject=${encodeURIComponent(t('help.contactSubject'))}`
                                 )
                             }
                         >
                             <Ionicons name="mail-outline" size={20} color="#666" />
-                            <Text style={styles.linkText}>メールで問い合わせる</Text>
+                            <Text style={styles.linkText}>{t('help.contactEmail')}</Text>
                             <Ionicons name="chevron-forward" size={20} color="#ccc" />
                         </TouchableOpacity>
                     </View>
 
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>アプリ情報</Text>
+                        <Text style={styles.sectionTitle}>{t('help.appInfoSection')}</Text>
                         <View style={styles.infoRow}>
-                            <Text style={styles.infoLabel}>バージョン</Text>
+                            <Text style={styles.infoLabel}>{t('help.version')}</Text>
                             <Text style={styles.infoValue}>{appVersion}</Text>
                         </View>
                     </View>

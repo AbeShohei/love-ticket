@@ -1,6 +1,7 @@
 import { BannerAdComponent } from '@/components/Ads';
 import { CombinedProgressRing } from '@/components/CombinedProgressRing';
 import { HelpSupportModal } from '@/components/HelpSupportModal';
+import { LanguageSettingsModal } from '@/components/LanguageSettingsModal';
 import { NativeDateTimePicker } from '@/components/NativeDateTimePicker';
 import { NotificationSettingsModal } from '@/components/NotificationSettingsModal';
 import { PrivacyModal } from '@/components/PrivacyModal';
@@ -9,9 +10,12 @@ import { SubscriptionBanner } from '@/components/SubscriptionBanner';
 import { SubscriptionModal } from '@/components/SubscriptionModal';
 import { api } from '@/convex/_generated/api';
 import { useAuth } from '@/providers/AuthProvider';
+import { useSubscription } from '@/providers/SubscriptionProvider';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery } from 'convex/react';
 import * as Haptics from 'expo-haptics';
+import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ActionSheetIOS, Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -19,8 +23,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
     const { profile, signOut, convexId } = useAuth();
+    const { isPremium, customerInfo } = useSubscription();
     const router = useRouter();
     const insets = useSafeAreaInsets();
+    const { t } = useTranslation();
 
     // UI State
     const [isProfileEditVisible, setIsProfileEditVisible] = useState(false);
@@ -28,10 +34,12 @@ export default function ProfileScreen() {
     const [isNotificationSettingsVisible, setIsNotificationSettingsVisible] = useState(false);
     const [isPrivacyVisible, setIsPrivacyVisible] = useState(false);
     const [isHelpVisible, setIsHelpVisible] = useState(false);
+    const [isLanguageVisible, setIsLanguageVisible] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
 
     // Mutations & Queries
     const leaveCoupleMutation = useMutation(api.couples.leave);
+    const deleteAccountMutation = useMutation(api.users.deleteAccount);
     const updateAnniversary = useMutation(api.couples.updateAnniversary);
 
     // Fetch couple info based on user's coupleId
@@ -71,7 +79,7 @@ export default function ProfileScreen() {
                 });
             } catch (error) {
                 console.error('Failed to save anniversary:', error);
-                Alert.alert('エラー', '記念日の保存に失敗しました');
+                Alert.alert(t('common.error'), t('profile.anniversarySaveFailed'));
             }
         }
     };
@@ -99,16 +107,40 @@ export default function ProfileScreen() {
         };
     }, [isPaired, matchStats]);
 
+    const handleDeleteAccount = () => {
+        Alert.alert(
+            t('profile.deleteAccountTitle'),
+            t('profile.deleteAccountMessage'),
+            [
+                { text: t('common.cancel'), style: 'cancel' },
+                {
+                    text: t('profile.deleteAccountConfirm'),
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await deleteAccountMutation();
+                            await signOut();
+                            router.replace('/login');
+                        } catch (error) {
+                            console.error('Delete account error:', error);
+                            Alert.alert(t('common.error'), t('profile.deleteAccountFailed'));
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
     const handleLogout = async () => {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackStyle.Warning);
 
         Alert.alert(
-            'ログアウト',
-            '本当にログアウトしますか？',
+            t('profile.logoutConfirmTitle'),
+            t('profile.logoutConfirmMessage'),
             [
-                { text: 'キャンセル', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'ログアウト',
+                    text: t('auth.logout'),
                     style: 'destructive',
                     onPress: async () => {
                         try {
@@ -116,12 +148,24 @@ export default function ProfileScreen() {
                             router.replace('/login');
                         } catch (error) {
                             console.error('Logout error:', error);
-                            Alert.alert('エラー', 'ログアウトに失敗しました');
+                            Alert.alert(t('common.error'), t('profile.logoutFailed'));
                         }
                     }
                 }
             ]
         );
+    };
+
+    const handleManageSubscription = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+        if (Platform.OS === 'ios') {
+            // Open App Store subscription management
+            Linking.openURL('https://apps.apple.com/account/subscriptions');
+        } else {
+            // Open Google Play subscription management
+            Linking.openURL('https://play.google.com/store/account/subscriptions');
+        }
     };
 
     const handleBreakup = () => {
@@ -133,12 +177,12 @@ export default function ProfileScreen() {
 
         const confirmBreakup = async () => {
             Alert.alert(
-                '最終確認',
-                'この操作は取り消せません。\nデートの履歴やマッチデータは保持されますが、パートナーとの連携が解除されます。',
+                t('profile.breakupFinalTitle'),
+                t('profile.breakupFinalMessage'),
                 [
-                    { text: 'やめる', style: 'cancel' },
+                    { text: t('profile.breakupStop'), style: 'cancel' },
                     {
-                        text: 'お別れする',
+                        text: t('profile.breakupConfirmButton'),
                         style: 'destructive',
                         onPress: async () => {
                             try {
@@ -146,10 +190,10 @@ export default function ProfileScreen() {
                                 if (Platform.OS !== 'web') {
                                     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                                 }
-                                Alert.alert('完了', 'パートナーとの連携を解除しました');
+                                Alert.alert(t('common.success'), t('profile.breakupSuccess'));
                             } catch (error) {
                                 console.error('Breakup error:', error);
-                                Alert.alert('エラー', '連携の解除に失敗しました');
+                                Alert.alert(t('common.error'), t('profile.breakupFailed'));
                             }
                         }
                     }
@@ -158,12 +202,12 @@ export default function ProfileScreen() {
         };
 
         Alert.alert(
-            'お別れをする',
-            `${coupleInfo?.partner?.displayName || 'パートナー'}との連携を解除しますか？`,
+            t('profile.breakupTitle'),
+            `${coupleInfo?.partner?.displayName || t('profile.partner')}${t('profile.breakupConfirm')}`,
             [
-                { text: 'キャンセル', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: '続ける',
+                    text: t('common.continue'),
                     style: 'destructive',
                     onPress: confirmBreakup
                 }
@@ -175,18 +219,29 @@ export default function ProfileScreen() {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
         if (Platform.OS === 'ios') {
-            const options = isPaired
-                ? ['キャンセル', '通知設定', 'プライバシー', 'ヘルプとサポート', 'お別れをする', 'ログアウト']
-                : ['キャンセル', '通知設定', 'プライバシー', 'ヘルプとサポート', 'ログアウト'];
-            const destructiveIndex = isPaired ? 4 : 4;
-            const logoutIndex = isPaired ? 5 : 4;
+            // Add subscription management option for premium users
+            const baseOptions = [t('common.cancel'), t('settings.notifications'), t('settings.language'), t('settings.privacy'), t('settings.helpSupport')];
+            if (isPremium) {
+                baseOptions.push(t('subscription.manageSubscription'));
+            }
+            if (isPaired) {
+                baseOptions.push(t('profile.breakupTitle'));
+            }
+            baseOptions.push(t('auth.logout'));
+            baseOptions.push(t('profile.deleteAccountTitle'));
+
+            const options = baseOptions;
+            const subscriptionIndex = isPremium ? 5 : -1;
+            const breakupIndex = isPremium ? 6 : 5;
+            const logoutIndex = options.length - 2;
+            const deleteIndex = options.length - 1;
 
             ActionSheetIOS.showActionSheetWithOptions(
                 {
                     options,
-                    destructiveButtonIndex: destructiveIndex,
+                    destructiveButtonIndex: [isPaired ? breakupIndex : -1, deleteIndex].filter(i => i >= 0),
                     cancelButtonIndex: 0,
-                    title: '設定',
+                    title: t('common.settings'),
                 },
                 (buttonIndex) => {
                     if (buttonIndex === 0) {
@@ -194,31 +249,42 @@ export default function ProfileScreen() {
                     } else if (buttonIndex === 1) {
                         setIsNotificationSettingsVisible(true);
                     } else if (buttonIndex === 2) {
-                        setIsPrivacyVisible(true);
+                        setIsLanguageVisible(true);
                     } else if (buttonIndex === 3) {
+                        setIsPrivacyVisible(true);
+                    } else if (buttonIndex === 4) {
                         setIsHelpVisible(true);
-                    } else if (isPaired && buttonIndex === 4) {
+                    } else if (isPremium && buttonIndex === 5) {
+                        handleManageSubscription();
+                    } else if (isPaired && buttonIndex === breakupIndex) {
                         handleBreakup();
                     } else if (buttonIndex === logoutIndex) {
                         handleLogout();
+                    } else if (buttonIndex === deleteIndex) {
+                        handleDeleteAccount();
                     }
                 }
             );
         } else {
             const buttons: any[] = [
-                { text: '通知設定', onPress: () => setIsNotificationSettingsVisible(true) },
-                { text: 'プライバシー', onPress: () => setIsPrivacyVisible(true) },
-                { text: 'ヘルプとサポート', onPress: () => setIsHelpVisible(true) },
+                { text: t('settings.notifications'), onPress: () => setIsNotificationSettingsVisible(true) },
+                { text: t('settings.language'), onPress: () => setIsLanguageVisible(true) },
+                { text: t('settings.privacy'), onPress: () => setIsPrivacyVisible(true) },
+                { text: t('settings.helpSupport'), onPress: () => setIsHelpVisible(true) },
             ];
-            if (isPaired) {
-                buttons.push({ text: 'お別れをする', onPress: handleBreakup, style: 'destructive' });
+            if (isPremium) {
+                buttons.push({ text: t('subscription.manageSubscription'), onPress: handleManageSubscription });
             }
-            buttons.push({ text: 'ログアウト', onPress: handleLogout, style: 'destructive' });
-            buttons.push({ text: 'キャンセル', style: 'cancel' });
+            if (isPaired) {
+                buttons.push({ text: t('profile.breakupTitle'), onPress: handleBreakup, style: 'destructive' });
+            }
+            buttons.push({ text: t('auth.logout'), onPress: handleLogout, style: 'destructive' });
+            buttons.push({ text: t('profile.deleteAccountTitle'), onPress: handleDeleteAccount, style: 'destructive' });
+            buttons.push({ text: t('common.cancel'), style: 'cancel' });
 
             Alert.alert(
-                '設定',
-                'メニューを選択してください',
+                t('common.settings'),
+                t('settings.selectMenu'),
                 buttons,
                 { cancelable: true }
             );
@@ -230,9 +296,9 @@ export default function ProfileScreen() {
             router.push('/pairing');
         } else {
             Alert.alert(
-                'パートナー',
-                `${coupleInfo?.partner?.displayName || 'パートナー'}と連携中です`,
-                [{ text: 'OK' }]
+                t('profile.partner'),
+                `${coupleInfo?.partner?.displayName || t('profile.partner')}${t('profile.partnerLinked')}`,
+                [{ text: t('common.ok') }]
             );
         }
     };
@@ -255,7 +321,7 @@ export default function ProfileScreen() {
                 {/* Couple Stats & Progress Ring */}
                 {isCoupleInfoLoading ? (
                     <View style={styles.statsContainer}>
-                        <Text style={styles.loadingText}>読み込み中...</Text>
+                        <Text style={styles.loadingText}>{t('common.loading')}</Text>
                     </View>
                 ) : isPaired ? (
                     <View style={styles.statsContainer}>
@@ -269,16 +335,15 @@ export default function ProfileScreen() {
                 ) : (
                     <View style={styles.notPairedContainer}>
                         <Ionicons name="heart-dislike-outline" size={64} color="#ccc" />
-                        <Text style={styles.notPairedTitle}>パートナーと連携していません</Text>
+                        <Text style={styles.notPairedTitle}>{t('profile.notPairedTitle')}</Text>
                         <Text style={styles.notPairedSubtitle}>
-                            パートナーと連携すると、{"\n"}
-                            付き合った日数やデートの統計が表示されます
+                            {t('profile.notPairedSubtitle')}
                         </Text>
                         <TouchableOpacity
                             style={styles.pairButton}
                             onPress={() => router.push('/pairing')}
                         >
-                            <Text style={styles.pairButtonText}>パートナーと連携する</Text>
+                            <Text style={styles.pairButtonText}>{t('profile.pairWithPartner')}</Text>
                         </TouchableOpacity>
                     </View>
                 )}
@@ -292,7 +357,7 @@ export default function ProfileScreen() {
                         <View style={styles.glassBtnSmall}>
                             <Ionicons name="person-outline" size={24} color="#7c8591" />
                         </View>
-                        <Text style={styles.actionLabel}>プロフィール</Text>
+                        <Text style={styles.actionLabel}>{t('profile.profile')}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -302,7 +367,7 @@ export default function ProfileScreen() {
                         <View style={[styles.glassBtnSmall, !isPaired && styles.glassBtnHighlight]}>
                             <Ionicons name={isPaired ? "people" : "people-outline"} size={24} color={isPaired ? "#FF4B4B" : "#7c8591"} />
                         </View>
-                        <Text style={styles.actionLabel}>{isPaired ? 'パートナー' : '連携'}</Text>
+                        <Text style={styles.actionLabel}>{isPaired ? t('profile.partner') : t('profile.pairing')}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -313,14 +378,14 @@ export default function ProfileScreen() {
                         <View style={styles.glassBtnSmall}>
                             <MaterialCommunityIcons name="calendar-heart" size={24} color={isPaired ? "#FF4B4B" : "#7c8591"} />
                         </View>
-                        <Text style={styles.actionLabel}>記念日設定</Text>
+                        <Text style={styles.actionLabel}>{t('profile.anniversary')}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.actionBtnContainer} onPress={showSettingsMenu}>
                         <View style={styles.glassBtnSmall}>
                             <Ionicons name="settings-outline" size={24} color="#7c8591" />
                         </View>
-                        <Text style={styles.actionLabel}>設定</Text>
+                        <Text style={styles.actionLabel}>{t('common.settings')}</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -360,6 +425,11 @@ export default function ProfileScreen() {
             <HelpSupportModal
                 visible={isHelpVisible}
                 onClose={() => setIsHelpVisible(false)}
+            />
+
+            <LanguageSettingsModal
+                visible={isLanguageVisible}
+                onClose={() => setIsLanguageVisible(false)}
             />
         </View>
     );

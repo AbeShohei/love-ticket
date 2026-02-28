@@ -6,34 +6,21 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useMemo, useState } from 'react';
 import { Dimensions, FlatList, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Calendar, DateData, LocaleConfig } from 'react-native-calendars';
+import { Calendar, DateData } from 'react-native-calendars';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useAuth } from '@/providers/AuthProvider';
 import { fromConvexProposal } from '@/types/Proposal';
+import { useTranslation } from 'react-i18next';
 
-// Setup Japanese Locale
-LocaleConfig.locales['jp'] = {
-    monthNames: [
-        '1月', '2月', '3月', '4月', '5月', '6月',
-        '7月', '8月', '9月', '10月', '11月', '12月'
-    ],
-    monthNamesShort: [
-        '1月', '2月', '3月', '4月', '5月', '6月',
-        '7月', '8月', '9月', '10月', '11月', '12月'
-    ],
-    dayNames: ['日曜日', '月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日'],
-    dayNamesShort: ['日', '月', '火', '水', '木', '金', '土'],
-    today: '今日'
-};
-LocaleConfig.defaultLocale = 'jp';
-
+// Locale is configured in I18nProvider
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const appIcon = require('../../assets/images/icon.png');
 
 export default function ScheduleScreen() {
     const { profile } = useAuth();
+    const { t } = useTranslation();
     const matches = useMatchStore((state) => state.matches);
     const [currentMonth, setCurrentMonth] = useState(new Date().toISOString().split('T')[0].slice(0, 7)); // YYYY-MM
     const [selectedPlan, setSelectedPlan] = useState<any>(null); // Plan to view details for
@@ -168,7 +155,7 @@ export default function ScheduleScreen() {
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>スケジュール</Text>
+                <Text style={styles.headerTitle}>{t('schedule.title')}</Text>
             </View>
             <BannerAdComponent />
 
@@ -192,7 +179,7 @@ export default function ScheduleScreen() {
             </View>
 
             <View style={styles.listContainer}>
-                <Text style={styles.listHeader}>{new Date(currentMonth).getMonth() + 1}月の予定</Text>
+                <Text style={styles.listHeader}>{t('schedule.monthPlans', { month: new Date(currentMonth).getMonth() + 1 })}</Text>
                 <FlatList
                     data={visiblePlans}
                     renderItem={renderPlanItem}
@@ -200,8 +187,8 @@ export default function ScheduleScreen() {
                     contentContainerStyle={styles.listContent}
                     ListEmptyComponent={
                         <View style={styles.emptyState}>
-                            <Text style={styles.emptyText}>予定はありません</Text>
-                            <Text style={styles.emptySubText}>チケット画面からデートを計画しましょう！</Text>
+                            <Text style={styles.emptyText}>{t('schedule.noPlans')}</Text>
+                            <Text style={styles.emptySubText}>{t('schedule.noPlansSubtext')}</Text>
                         </View>
                     }
                 />
@@ -223,7 +210,7 @@ export default function ScheduleScreen() {
                             </TouchableOpacity>
                         </View>
                         <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalContent}>
-                            <Text style={styles.modalSectionTitle}>デートスポット ({(selectedPlan.proposals || []).length})</Text>
+                            <Text style={styles.modalSectionTitle}>{t('schedule.dateSpots', { count: (selectedPlan.proposals || []).length })}</Text>
                             {(selectedPlan.proposals || []).map((proposal: any) => {
                                 const imageUrl = proposal?.imageUrl || proposal?.images?.[0] || 'https://placehold.co/200x200';
                                 return (

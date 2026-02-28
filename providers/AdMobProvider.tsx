@@ -1,6 +1,7 @@
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
+import { requestTrackingPermissionsAsync } from 'expo-tracking-transparency';
 
 interface AdMobContextType {
     isInitialized: boolean;
@@ -37,6 +38,10 @@ export const AdMobProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             }
 
             try {
+                // Request ATT permission before initializing AdMob (iOS 14+)
+                if (Platform.OS === 'ios') {
+                    await requestTrackingPermissionsAsync();
+                }
                 // Dynamic import/require to avoid top-level crash
                 const mobileAds = require('react-native-google-mobile-ads').default;
                 const { MaxAdContentRating } = require('react-native-google-mobile-ads');

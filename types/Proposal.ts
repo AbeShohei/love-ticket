@@ -1,5 +1,5 @@
 // Category type matching Convex schema
-export type ProposalCategory = 'date_spot' | 'restaurant' | 'activity' | 'travel' | 'adult' | 'other';
+export type ProposalCategory = 'date_spot' | 'restaurant' | 'activity' | 'travel' | 'other';
 
 // Frontend Proposal type (unified with Convex schema)
 export type Proposal = {

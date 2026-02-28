@@ -203,6 +203,42 @@ export const updateNotificationSettings = mutation({
   },
 });
 
+// Update language preference
+export const updateLanguage = mutation({
+  args: {
+    language: v.union(v.literal("ja"), v.literal("en")),
+    userId: v.optional(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    let user;
+
+    // Try to get user from auth first
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity) {
+      user = await ctx.db
+        .query("users")
+        .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+        .first();
+    }
+
+    // Fallback to userId parameter if auth not available
+    if (!user && args.userId) {
+      user = await ctx.db.get(args.userId);
+    }
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    await ctx.db.patch(user._id, {
+      language: args.language,
+      updatedAt: Date.now(),
+    });
+
+    return user._id;
+  },
+});
+
 // Check if user has premium subscription
 export const hasEntitlement = query({
   args: { clerkId: v.string() },
@@ -227,7 +263,77 @@ export const hasEntitlement = query({
   },
 });
 
+// Update subscription status (called from RevenueCat webhook or client)
+export const updateSubscriptionStatus = mutation({
+  args: {
+    clerkId: v.string(),
+    status: v.optional(v.union(
+      v.literal("free"),
+      v.literal("trial"),
+      v.literal("active"),
+      v.literal("expired")
+    )),
+    tier: v.optional(v.union(
+      v.literal("weekly"),
+      v.literal("monthly"),
+      v.literal("yearly")
+    )),
+    expiryDate: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .first();
 
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const updates: Record<string, any> = { updatedAt: Date.now() };
+    if (args.status !== undefined) updates.subscriptionStatus = args.status;
+    if (args.tier !== undefined) updates.subscriptionTier = args.tier;
+    if (args.expiryDate !== undefined) updates.subscriptionExpiry = args.expiryDate;
+
+    await ctx.db.patch(user._id, updates);
+
+    return user._id;
+  },
+});
+
+
+
+// Delete account and all user data
+export const deleteAccount = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthenticated");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Delete daily usage records
+    const usageRecords = await ctx.db
+      .query("dailyUsage")
+      .withIndex("by_user_date", (q) => q.eq("userId", user._id))
+      .collect();
+    for (const record of usageRecords) {
+      await ctx.db.delete(record._id);
+    }
+
+    // Delete the user record
+    await ctx.db.delete(user._id);
+  },
+});
 
 // Get daily usage for a user
 export const getDailyUsage = query({

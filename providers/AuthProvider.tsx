@@ -262,7 +262,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
             throw new Error(`Verification failed: ${result.status}`);
         } catch (error: any) {
-            throw new Error(error.errors?.[0]?.message || error.message || '認証コードが正しくありません');
+            throw new Error(error.errors?.[0]?.message || error.message || 'Verification code is incorrect');
         }
     };
 

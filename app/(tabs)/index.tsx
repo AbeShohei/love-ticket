@@ -2,6 +2,7 @@ import { BannerAdComponent } from '@/components/Ads';
 import { CATEGORIES } from '@/constants/Presets';
 import { api } from '@/convex/_generated/api';
 import { useAuth } from '@/providers/AuthProvider';
+import { useSubscription } from '@/providers/SubscriptionProvider';
 import { useMatchStore } from '@/stores/matchStore';
 import { useSwipeStore } from '@/stores/swipeStore';
 import { fromConvexProposal, Proposal, ProposalCategory } from '@/types/Proposal';
@@ -26,6 +27,7 @@ import Animated, {
   withTiming
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SCREEN_HEIGHT = Dimensions.get('window').height;
@@ -44,13 +46,13 @@ type DailyUsage = {
   proposal_create_count: number;
 };
 
-// Ad data for interspersed ads
-const AD_DATA: Proposal[] = [
+// Ad data component - needs translation function
+const AdDataComponent = ({ t }: { t: (key: string) => string }): Proposal[] => [
   {
     id: 'ad-1',
     isAd: true,
     title: 'Netflix 🍿',
-    description: '今週末は二人で映画三昧！最新作から不朽の名作まで、Netflixで忘れられない時間を。',
+    description: t('home.netflixDescription'),
     imageUrl: 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?q=80&w=600&h=900&auto=format&fit=crop',
     category: 'other' as ProposalCategory,
     url: 'https://www.netflix.com',
@@ -60,7 +62,7 @@ const AD_DATA: Proposal[] = [
     id: 'ad-2',
     isAd: true,
     title: 'Starbucks ☕',
-    description: 'ちょっと一息、季節の新作を。素敵な空間で、二人だけの会話を楽しんで。',
+    description: t('home.cafeDescription'),
     imageUrl: 'https://images.unsplash.com/photo-1544787210-282dd74b00d7?q=80&w=600&h=900&auto=format&fit=crop',
     category: 'other' as ProposalCategory,
     url: 'https://www.starbucks.co.jp',
@@ -75,6 +77,11 @@ export default function SwipeScreen() {
   const [loading, setLoading] = useState(true);
 
   const { profile, couple, convexId } = useAuth();
+  const { isPremium } = useSubscription();
+  const { t } = useTranslation();
+
+  // Get ad data with translations
+  const AD_DATA = useMemo(() => AdDataComponent({ t }), [t]);
   const router = useRouter();
   const params = useLocalSearchParams<{ retryId?: string }>();
   const addMatch = useMatchStore((state) => state.addMatch);
@@ -181,21 +188,23 @@ export default function SwipeScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
 
-    // Check Limits
-    if (direction === 'right' && dailyUsage.like_count >= DAILY_LIKE_LIMIT) {
-      if (Platform.OS !== 'web') {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    // Check Limits (skip for premium users)
+    if (!isPremium) {
+      if (direction === 'right' && dailyUsage.like_count >= DAILY_LIKE_LIMIT) {
+        if (Platform.OS !== 'web') {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        }
+        Alert.alert(t('home.likeLimitReached'), t('home.likeLimitMessage'));
+        return;
       }
-      Alert.alert('制限に達しました', '本日のいいね数が上限に達しました。明日またお試しください！');
-      return;
-    }
 
-    if (direction === 'up' && dailyUsage.super_like_count >= DAILY_SUPER_LIKE_LIMIT) {
-      if (Platform.OS !== 'web') {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      if (direction === 'up' && dailyUsage.super_like_count >= DAILY_SUPER_LIKE_LIMIT) {
+        if (Platform.OS !== 'web') {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        }
+        Alert.alert(t('home.likeLimitReached'), t('home.superLikeLimitMessage'));
+        return;
       }
-      Alert.alert('制限に達しました', '本日の超いいね数が上限に達しました。');
-      return;
     }
 
     // Optimistic Update
@@ -321,7 +330,7 @@ export default function SwipeScreen() {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#fd297b" />
-        <Text style={styles.loadingText}>デート案を読み込み中...</Text>
+        <Text style={styles.loadingText}>{t('home.loadingProposals')}</Text>
       </View>
     );
   }
@@ -331,13 +340,13 @@ export default function SwipeScreen() {
     return (
       <View style={styles.centerContainer}>
         <Ionicons name="heart-outline" size={64} color="#ccc" />
-        <Text style={styles.emptyTitle}>ペアリングが必要です</Text>
-        <Text style={styles.emptySubtitle}>パートナーと連携してデートを始めましょう</Text>
+        <Text style={styles.emptyTitle}>{t('home.pairingRequired')}</Text>
+        <Text style={styles.emptySubtitle}>{t('home.pairingRequiredSubtext')}</Text>
         <TouchableOpacity
           style={styles.emptyButton}
           onPress={() => router.replace('/pairing')}
         >
-          <Text style={styles.emptyButtonText}>ペアリングへ</Text>
+          <Text style={styles.emptyButtonText}>{t('home.goToPairing')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -348,9 +357,9 @@ export default function SwipeScreen() {
     return (
       <View style={styles.centerContainer}>
         <Ionicons name="checkmark-circle-outline" size={64} color="#4CAF50" />
-        <Text style={styles.emptyTitle}>全て確認済み！</Text>
+        <Text style={styles.emptyTitle}>{t('home.allChecked')}</Text>
         <Text style={styles.emptySubtitle}>
-          デート案をカタログから作成しましょう
+          {t('home.createFromCatalog')}
         </Text>
       </View>
     );
@@ -384,7 +393,7 @@ export default function SwipeScreen() {
               key={item.id}
               item={item}
               onSwipe={onSwipeComplete}
-              canLike={dailyUsage.like_count < DAILY_LIKE_LIMIT}
+              canLike={isPremium || dailyUsage.like_count < DAILY_LIKE_LIMIT}
               isActive={isTop}
               sharedX={translateX}
               sharedY={translateY}
@@ -516,7 +525,6 @@ const Card = React.memo(({ item, isTop }: { item: Proposal, isTop: boolean }) =>
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const images = item.images && item.images.length > 0 ? item.images : [item.imageUrl || 'https://placehold.co/600x800/png?text=Profile'];
 
-  const isAdult = item.category === 'adult';
   const isSinglePhoto = images.length <= 1;
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -557,14 +565,6 @@ const Card = React.memo(({ item, isTop }: { item: Proposal, isTop: boolean }) =>
           <Pressable style={styles.leftTouchZone} onPress={handlePrev} />
           <Pressable style={styles.rightTouchZone} onPress={handleNext} />
         </>
-      )}
-
-      {isAdult && (
-        <BlurView intensity={30} style={StyleSheet.absoluteFill}>
-          <View style={styles.lockOverlay}>
-            <Ionicons name="lock-closed" size={48} color="#fff" />
-          </View>
-        </BlurView>
       )}
 
       {/* Top Gradient Blur using MaskedView */}
@@ -1176,10 +1176,5 @@ const styles = StyleSheet.create({
     width: '50%',
     height: '100%',
     zIndex: 90,
-  },
-  lockOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 });

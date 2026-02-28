@@ -1,6 +1,7 @@
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import React, { useEffect } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
+import { useSubscription } from '@/providers/SubscriptionProvider';
 
 // Check if we are running in Expo Go or Web
 const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
@@ -64,9 +65,16 @@ export const initializeAdMob = async () => {
 };
 
 export const BannerAdComponent: React.FC = () => {
+    const { isPremium } = useSubscription();
+
     useEffect(() => {
         initializeAdMob();
     }, []);
+
+    // Don't show ads for premium users
+    if (isPremium) {
+        return null;
+    }
 
     if (!isAdMobAvailable || !BannerAd) {
         if (__DEV__) {

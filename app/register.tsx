@@ -8,6 +8,7 @@ import { Link, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../providers/AuthProvider';
 
 // Warm up Android browser for OAuth
@@ -23,6 +24,7 @@ export default function Register() {
     const codeInputRefs = React.useRef<(TextInput | null)[]>([]);
     const { signUp, verifyEmail } = useAuth();
     const router = useRouter();
+    const { t } = useTranslation();
 
     // Google OAuth
     const { startOAuthFlow: startGoogleOAuth } = useOAuth({ strategy: 'oauth_google' });
@@ -31,17 +33,17 @@ export default function Register() {
 
     async function handleSignUp() {
         if (!email.trim() || !password.trim() || !displayName.trim()) {
-            Alert.alert('エラー', 'すべての項目を入力してください');
+            Alert.alert(t('common.error'), t('auth.fillAllFields'));
             return;
         }
 
         if (displayName.trim().length > 12) {
-            Alert.alert('エラー', '表示名は12文字以内で入力してください');
+            Alert.alert(t('common.error'), t('auth.displayNameTooLong'));
             return;
         }
 
         if (password.length < 8) {
-            Alert.alert('エラー', 'パスワードは8文字以上で入力してください');
+            Alert.alert(t('common.error'), t('auth.passwordTooShort'));
             return;
         }
 
@@ -69,11 +71,11 @@ export default function Register() {
                 if (Platform.OS !== 'web') {
                     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
                 }
-                const message = error.message || '登録に失敗しました';
+                const message = error.message || t('auth.registerFailed');
                 if (Platform.OS === 'web') {
                     alert(message);
                 } else {
-                    Alert.alert('登録エラー', message);
+                    Alert.alert(t('auth.registerError'), message);
                 }
             }
         } finally {
@@ -117,9 +119,9 @@ export default function Register() {
         const code = verificationCode.join('');
         if (code.length !== 6) {
             if (Platform.OS === 'web') {
-                alert('6桁の認証コードを入力してください');
+                alert(t('auth.enterSixDigitCode'));
             } else {
-                Alert.alert('エラー', '6桁の認証コードを入力してください');
+                Alert.alert(t('common.error'), t('auth.enterSixDigitCode'));
             }
             return;
         }
@@ -139,11 +141,11 @@ export default function Register() {
             if (Platform.OS !== 'web') {
                 await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             }
-            const message = error.message || '認証に失敗しました';
+            const message = error.message || t('auth.verifyFailed');
             if (Platform.OS === 'web') {
                 alert(message);
             } else {
-                Alert.alert('認証エラー', message);
+                Alert.alert(t('auth.verifyError'), message);
             }
             // Clear code on error
             setVerificationCode(['', '', '', '', '', '']);
@@ -167,7 +169,7 @@ export default function Register() {
             }
         } catch (error: any) {
             console.error('Google OAuth error:', error);
-            Alert.alert('エラー', 'Google 登録に失敗しました');
+            Alert.alert(t('common.error'), t('auth.googleRegisterFailed'));
         } finally {
             setLoading(false);
         }
@@ -187,7 +189,7 @@ export default function Register() {
             }
         } catch (error: any) {
             console.error('Apple OAuth error:', error);
-            Alert.alert('エラー', 'Apple 登録に失敗しました');
+            Alert.alert(t('common.error'), t('auth.appleRegisterFailed'));
         } finally {
             setLoading(false);
         }
@@ -225,9 +227,9 @@ export default function Register() {
                         {step === 'verify' ? (
                             /* ========== Verification Step ========== */
                             <>
-                                <Text style={styles.subtitle}>認証コードを入力</Text>
+                                <Text style={styles.subtitle}>{t('auth.verifyCode')}</Text>
                                 <Text style={styles.verifyDescription}>
-                                    {email} に6桁の認証コードを送信しました。{"\n"}メールを確認して入力してください。
+                                    {t('auth.verifyDescription', { email })}
                                 </Text>
 
                                 {/* 6-digit Code Input */}
@@ -266,7 +268,7 @@ export default function Register() {
                                         {loading ? (
                                             <ActivityIndicator color="#fff" />
                                         ) : (
-                                            <Text style={styles.buttonText}>認証する</Text>
+                                            <Text style={styles.buttonText}>{t('auth.verify')}</Text>
                                         )}
                                     </LinearGradient>
                                 </TouchableOpacity>
@@ -281,15 +283,15 @@ export default function Register() {
                                                 setVerificationCode(['', '', '', '', '', '']);
                                                 codeInputRefs.current[0]?.focus();
                                                 if (Platform.OS === 'web') {
-                                                    alert('認証コードを再送信しました');
+                                                    alert(t('auth.resendSuccess'));
                                                 } else {
-                                                    Alert.alert('再送信', '認証コードを再送信しました');
+                                                    Alert.alert(t('auth.resendCode'), t('auth.resendSuccess'));
                                                 }
                                             }
                                         }
                                     }}
                                 >
-                                    <Text style={[styles.resendText, { color: '#FF4B4B' }]}>コードを再送信</Text>
+                                    <Text style={[styles.resendText, { color: '#FF4B4B' }]}>{t('auth.resendCode')}</Text>
                                 </TouchableOpacity>
 
                                 <TouchableOpacity
@@ -299,7 +301,7 @@ export default function Register() {
                                         setVerificationCode(['', '', '', '', '', '']);
                                     }}
                                 >
-                                    <Text style={styles.resendText}>← 登録画面に戻る</Text>
+                                    <Text style={styles.resendText}>{t('auth.backToRegister')}</Text>
                                 </TouchableOpacity>
                             </>
                         ) : (
@@ -309,7 +311,7 @@ export default function Register() {
                                 <View style={styles.inputContainer}>
                                     <TextInput
                                         style={styles.input}
-                                        placeholder="表示名 (12文字以内)"
+                                        placeholder={t('auth.displayNameMax')}
                                         placeholderTextColor="#666"
                                         value={displayName}
                                         onChangeText={setDisplayName}
@@ -318,7 +320,7 @@ export default function Register() {
                                     />
                                     <TextInput
                                         style={styles.input}
-                                        placeholder="メールアドレス"
+                                        placeholder={t('auth.email')}
                                         placeholderTextColor="#666"
                                         value={email}
                                         onChangeText={setEmail}
@@ -328,7 +330,7 @@ export default function Register() {
                                     />
                                     <TextInput
                                         style={styles.input}
-                                        placeholder="パスワード (8文字以上)"
+                                        placeholder={t('auth.passwordMinLength')}
                                         placeholderTextColor="#666"
                                         value={password}
                                         onChangeText={setPassword}
@@ -352,7 +354,7 @@ export default function Register() {
                                         {loading ? (
                                             <ActivityIndicator color="#fff" />
                                         ) : (
-                                            <Text style={styles.buttonText}>アカウント作成</Text>
+                                            <Text style={styles.buttonText}>{t('auth.createAccount')}</Text>
                                         )}
                                     </LinearGradient>
                                 </TouchableOpacity>
@@ -360,7 +362,7 @@ export default function Register() {
                                 {/* Divider */}
                                 <View style={styles.divider}>
                                     <View style={styles.dividerLine} />
-                                    <Text style={styles.dividerText}>または</Text>
+                                    <Text style={styles.dividerText}>{t('common.or')}</Text>
                                     <View style={styles.dividerLine} />
                                 </View>
 
@@ -371,7 +373,7 @@ export default function Register() {
                                     disabled={loading}
                                 >
                                     <FontAwesome5 name="google" size={18} color="#4285F4" style={styles.socialIcon} />
-                                    <Text style={styles.socialButtonText}>Googleで始める</Text>
+                                    <Text style={styles.socialButtonText}>{t('auth.startWithGoogle')}</Text>
                                 </TouchableOpacity>
 
                                 {Platform.OS === 'ios' && (
@@ -381,15 +383,15 @@ export default function Register() {
                                         disabled={loading}
                                     >
                                         <FontAwesome5 name="apple" size={20} color="#fff" style={styles.socialIcon} />
-                                        <Text style={[styles.socialButtonText, styles.appleButtonText]}>Appleで始める</Text>
+                                        <Text style={[styles.socialButtonText, styles.appleButtonText]}>{t('auth.startWithApple')}</Text>
                                     </TouchableOpacity>
                                 )}
 
                                 <View style={styles.footer}>
-                                    <Text style={styles.footerText}>すでにアカウントをお持ちですか？</Text>
+                                    <Text style={styles.footerText}>{t('auth.hasAccount')}</Text>
                                     <Link href="/login" asChild>
                                         <TouchableOpacity onPress={() => Platform.OS !== 'web' && Haptics.selectionAsync()}>
-                                            <Text style={styles.link}>ログイン</Text>
+                                            <Text style={styles.link}>{t('auth.login')}</Text>
                                         </TouchableOpacity>
                                     </Link>
                                 </View>

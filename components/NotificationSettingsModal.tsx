@@ -14,6 +14,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/providers/AuthProvider';
 
 type Props = {
@@ -23,6 +24,7 @@ type Props = {
 
 export function NotificationSettingsModal({ visible, onClose }: Props) {
     const { userId } = useAuth();
+    const { t } = useTranslation();
     const [dateNotification, setDateNotification] = useState(true);
     const [matchNotification, setMatchNotification] = useState(true);
     const [planNotification, setPlanNotification] = useState(true);
@@ -70,18 +72,18 @@ export function NotificationSettingsModal({ visible, onClose }: Props) {
         >
             <SafeAreaView style={styles.container}>
                 <View style={styles.header}>
-                    <Text style={styles.headerTitle}>通知設定</Text>
+                    <Text style={styles.headerTitle}>{t('notifications.title')}</Text>
                     <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
                         <Ionicons name="close" size={24} color="#333" />
                     </TouchableOpacity>
                 </View>
                 <ScrollView style={styles.content}>
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>通知の種類</Text>
+                        <Text style={styles.sectionTitle}>{t('notifications.title')}</Text>
                         <View style={styles.row}>
                             <View style={styles.rowTextContainer}>
-                                <Text style={styles.rowTitle}>デート案の通知</Text>
-                                <Text style={styles.rowSubtitle}>新しいデート案が提案されたとき</Text>
+                                <Text style={styles.rowTitle}>{t('notifications.newProposals')}</Text>
+                                <Text style={styles.rowSubtitle}>{t('notifications.newProposalsDescription')}</Text>
                             </View>
                             <Switch
                                 value={dateNotification}
@@ -94,8 +96,8 @@ export function NotificationSettingsModal({ visible, onClose }: Props) {
                         </View>
                         <View style={styles.row}>
                             <View style={styles.rowTextContainer}>
-                                <Text style={styles.rowTitle}>マッチ通知</Text>
-                                <Text style={styles.rowSubtitle}>デートプランがマッチしたとき</Text>
+                                <Text style={styles.rowTitle}>{t('notifications.matches')}</Text>
+                                <Text style={styles.rowSubtitle}>{t('notifications.matchesDescription')}</Text>
                             </View>
                             <Switch
                                 value={matchNotification}
@@ -108,8 +110,8 @@ export function NotificationSettingsModal({ visible, onClose }: Props) {
                         </View>
                         <View style={styles.row}>
                             <View style={styles.rowTextContainer}>
-                                <Text style={styles.rowTitle}>プラン通知</Text>
-                                <Text style={styles.rowSubtitle}>デートプランの更新があったとき</Text>
+                                <Text style={styles.rowTitle}>{t('notifications.planUpdates')}</Text>
+                                <Text style={styles.rowSubtitle}>{t('notifications.planUpdatesDescription')}</Text>
                             </View>
                             <Switch
                                 value={planNotification}
@@ -123,7 +125,7 @@ export function NotificationSettingsModal({ visible, onClose }: Props) {
                     </View>
 
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>システム設定</Text>
+                        <Text style={styles.sectionTitle}>{t('notifications.systemSettings')}</Text>
                         <TouchableOpacity
                             style={styles.linkRow}
                             onPress={() => {
@@ -135,11 +137,11 @@ export function NotificationSettingsModal({ visible, onClose }: Props) {
                             }}
                         >
                             <Ionicons name="settings-outline" size={20} color="#666" />
-                            <Text style={styles.linkText}>OSの通知設定を開く</Text>
+                            <Text style={styles.linkText}>{t('notifications.openOSSettings')}</Text>
                             <Ionicons name="chevron-forward" size={20} color="#ccc" />
                         </TouchableOpacity>
                         <Text style={styles.hint}>
-                            通知が届かない場合は、端末の設定からアプリの通知を許可してください。
+                            {t('notifications.permissionHint')}
                         </Text>
                     </View>
                 </ScrollView>

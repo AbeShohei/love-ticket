@@ -16,6 +16,7 @@ import {
     View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -23,6 +24,7 @@ export default function ProfileSetup() {
     const { profile, userId, signOut } = useAuth();
     const router = useRouter();
     const insets = useSafeAreaInsets();
+    const { t } = useTranslation();
 
     const [avatarUri, setAvatarUri] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -46,13 +48,13 @@ export default function ProfileSetup() {
             }
         } catch (error) {
             console.error('Error picking image:', error);
-            Alert.alert('エラー', '画像の選択に失敗しました');
+            Alert.alert(t('common.error'), t('profileSetup.imageSelectFailed'));
         }
     };
 
     const handleSave = async () => {
         if (!avatarUri) {
-            Alert.alert('確認', 'プロフィール画像を設定してください');
+            Alert.alert(t('common.confirm'), t('profileSetup.photoRequired'));
             return;
         }
 
@@ -78,8 +80,8 @@ export default function ProfileSetup() {
             router.replace('/pairing');
         } catch (error: any) {
             console.error('Failed to save profile:', error);
-            const errorMessage = error.message || '不明なエラーが発生しました';
-            Alert.alert('エラー', `プロフィールの保存に失敗しました: ${errorMessage}`);
+            const errorMessage = error.message || t('errors.unknownError');
+            Alert.alert(t('common.error'), `${t('profileSetup.profileSaveFailed')}: ${errorMessage}`);
         } finally {
             setLoading(false);
         }
@@ -98,14 +100,14 @@ export default function ProfileSetup() {
         <View style={[styles.container, { paddingTop: insets.top }]}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-                    <Text style={styles.logoutText}>ログアウト</Text>
+                    <Text style={styles.logoutText}>{t('auth.logout')}</Text>
                 </TouchableOpacity>
             </View>
 
             <View style={styles.content}>
-                <Text style={styles.title}>プロフィール画像の設定</Text>
+                <Text style={styles.title}>{t('profileSetup.setTitle')}</Text>
                 <Text style={styles.subtitle}>
-                    パートナーに表示される画像を設定しましょう
+                    {t('profileSetup.setSubtitle')}
                 </Text>
 
                 <TouchableOpacity style={styles.avatarContainer} onPress={pickImage}>
@@ -120,7 +122,7 @@ export default function ProfileSetup() {
                         <Ionicons name="camera" size={24} color="#fff" />
                     </View>
                 </TouchableOpacity>
-                <Text style={styles.avatarHint}>タップして写真を選択</Text>
+                <Text style={styles.avatarHint}>{t('profileSetup.tapToSelect')}</Text>
 
                 <TouchableOpacity
                     style={[styles.button, !avatarUri && styles.buttonDisabled]}
@@ -130,7 +132,7 @@ export default function ProfileSetup() {
                     {loading ? (
                         <ActivityIndicator color="#fff" />
                     ) : (
-                        <Text style={styles.buttonText}>次へ</Text>
+                        <Text style={styles.buttonText}>{t('profileSetup.next')}</Text>
                     )}
                 </TouchableOpacity>
             </View>

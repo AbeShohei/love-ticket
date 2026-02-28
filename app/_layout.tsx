@@ -1,4 +1,7 @@
 import { AuthProvider, useAuth } from '@/providers/AuthProvider';
+import { SubscriptionProvider } from '@/providers/SubscriptionProvider';
+import { I18nProvider } from '@/providers/I18nProvider';
+import '@/i18n'; // Initialize i18n
 import { ClerkLoaded, ClerkProvider } from '@clerk/clerk-expo';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
@@ -7,7 +10,6 @@ import { ConvexProvider } from 'convex/react';
 import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import * as SystemUI from 'expo-system-ui';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 
@@ -25,9 +27,6 @@ SplashScreen.setOptions({
   duration: 500,
   fade: true,
 });
-
-// Set root view background color to match splash
-SystemUI.setBackgroundColorAsync('#FF4B4B');
 
 import { AdMobProvider } from '@/providers/AdMobProvider';
 
@@ -61,7 +60,11 @@ export default function RootLayout() {
         <ConvexProvider client={convex}>
           <AdMobProvider>
             <AuthProvider>
-              <RootLayoutNav />
+              <SubscriptionProvider>
+                <I18nProvider>
+                  <RootLayoutNav />
+                </I18nProvider>
+              </SubscriptionProvider>
             </AuthProvider>
           </AdMobProvider>
         </ConvexProvider>

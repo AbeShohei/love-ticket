@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { Dimensions, FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const ITEM_WIDTH = (SCREEN_WIDTH - 30) / 2;
@@ -38,6 +39,7 @@ type GeneratedSpot = {
 export default function ExploreScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
+    const { t } = useTranslation();
 
     // Convex query for preset proposals
     const presetProposals = useQuery(api.proposals.getExploreSpots, {});
@@ -148,7 +150,7 @@ export default function ExploreScreen() {
                 colors={['transparent', 'rgba(0,0,0,0.8)']}
                 style={styles.gradientOverlay}
             >
-                <Text style={styles.itemTitle}>{item.label}</Text>
+                <Text style={styles.itemTitle}>{t(item.labelKey)}</Text>
             </LinearGradient>
         </TouchableOpacity>
     );
@@ -157,7 +159,7 @@ export default function ExploreScreen() {
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
-            <Text style={styles.headerTitle}>カタログ</Text>
+            <Text style={styles.headerTitle}>{t('explore.headerTitle')}</Text>
             <BannerAdComponent />
 
             <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -177,13 +179,13 @@ export default function ExploreScreen() {
                     >
                         <View style={[styles.aiCardBadge, { backgroundColor: '#333' }]}>
                             <Ionicons name="time" size={14} color="#fff" />
-                            <Text style={[styles.aiCardBadgeText, { color: '#fff' }]}>Coming Soon</Text>
+                            <Text style={[styles.aiCardBadgeText, { color: '#fff' }]}>{t('explore.comingSoon')}</Text>
                         </View>
-                        <Text style={styles.aiCardTitle}>AIスポット提案</Text>
-                        <Text style={styles.aiCardSubtitle}>AIがあなたにぴったりのデートスポットを提案します</Text>
+                        <Text style={styles.aiCardTitle}>{t('explore.aiSuggestions')}</Text>
+                        <Text style={styles.aiCardSubtitle}>{t('explore.aiSuggestionsDesc')}</Text>
                         <View style={styles.aiCardFooter}>
                             <View style={[styles.aiCardButton, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                                <Text style={[styles.aiCardButtonText, { color: '#fff' }]}>準備中</Text>
+                                <Text style={[styles.aiCardButtonText, { color: '#fff' }]}>{t('explore.preparing')}</Text>
                             </View>
                         </View>
                     </LinearGradient>
@@ -191,7 +193,7 @@ export default function ExploreScreen() {
 
                 {/* Categories Section */}
                 <View style={styles.categoriesSection}>
-                    <Text style={styles.sectionTitle}>カテゴリから探す</Text>
+                    <Text style={styles.sectionTitle}>{t('explore.browseCategories')}</Text>
                     <FlatList
                         data={CATEGORIES}
                         renderItem={renderItem}

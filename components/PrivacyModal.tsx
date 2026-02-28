@@ -11,6 +11,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
     visible: boolean;
@@ -18,17 +19,19 @@ type Props = {
 };
 
 export function PrivacyModal({ visible, onClose }: Props) {
+    const { t } = useTranslation();
+
     const handleDeleteRequest = () => {
         Alert.alert(
-            'データ削除リクエスト',
-            'アカウントとデータの削除をご希望の場合は、サポートまでお問い合わせください。\n\nメールアドレス:\nsupport@love-ticket.app',
+            t('privacy.deleteRequestTitle'),
+            t('privacy.deleteRequestMessage'),
             [
-                { text: 'キャンセル', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'メールを送る',
+                    text: t('privacy.sendEmail'),
                     onPress: () =>
                         Linking.openURL(
-                            'mailto:support@love-ticket.app?subject=アカウント削除リクエスト&body=アカウントの削除を希望します。'
+                            `mailto:support@love-ticket.app?subject=${encodeURIComponent(t('privacy.deleteRequestSubject'))}&body=${encodeURIComponent(t('privacy.deleteRequestBody'))}`
                         ),
                 },
             ]
@@ -44,14 +47,14 @@ export function PrivacyModal({ visible, onClose }: Props) {
         >
             <SafeAreaView style={styles.container}>
                 <View style={styles.header}>
-                    <Text style={styles.headerTitle}>プライバシー</Text>
+                    <Text style={styles.headerTitle}>{t('privacy.title')}</Text>
                     <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
                         <Ionicons name="close" size={24} color="#333" />
                     </TouchableOpacity>
                 </View>
                 <ScrollView style={styles.content}>
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>プライバシーポリシー</Text>
+                        <Text style={styles.sectionTitle}>{t('privacy.policySection')}</Text>
                         <TouchableOpacity
                             style={styles.linkRow}
                             onPress={() =>
@@ -59,7 +62,7 @@ export function PrivacyModal({ visible, onClose }: Props) {
                             }
                         >
                             <Ionicons name="document-text-outline" size={20} color="#666" />
-                            <Text style={styles.linkText}>プライバシーポリシーを見る</Text>
+                            <Text style={styles.linkText}>{t('privacy.viewPrivacyPolicy')}</Text>
                             <Ionicons name="open-outline" size={18} color="#ccc" />
                         </TouchableOpacity>
                         <TouchableOpacity
@@ -69,31 +72,31 @@ export function PrivacyModal({ visible, onClose }: Props) {
                             }
                         >
                             <Ionicons name="reader-outline" size={20} color="#666" />
-                            <Text style={styles.linkText}>利用規約を見る</Text>
+                            <Text style={styles.linkText}>{t('privacy.viewTerms')}</Text>
                             <Ionicons name="open-outline" size={18} color="#ccc" />
                         </TouchableOpacity>
                     </View>
 
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>プロフィールの公開範囲</Text>
+                        <Text style={styles.sectionTitle}>{t('privacy.visibilitySection')}</Text>
                         <View style={styles.infoBox}>
                             <Text style={styles.infoText}>
-                                あなたのプロフィール情報（名前・アバター）は、連携中のパートナーにのみ表示されます。他のユーザーからは見えません。
+                                {t('privacy.visibilityInfo')}
                             </Text>
                         </View>
                     </View>
 
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>データの管理</Text>
+                        <Text style={styles.sectionTitle}>{t('privacy.dataManagementSection')}</Text>
                         <TouchableOpacity
                             style={styles.deleteRow}
                             onPress={handleDeleteRequest}
                         >
                             <Ionicons name="trash-outline" size={20} color="#FF4B4B" />
-                            <Text style={styles.deleteText}>アカウント・データの削除を依頼</Text>
+                            <Text style={styles.deleteText}>{t('privacy.requestDataDeletion')}</Text>
                         </TouchableOpacity>
                         <Text style={styles.hint}>
-                            削除リクエストを送信すると、サポートチームが対応いたします。削除後はデータの復元はできません。
+                            {t('privacy.deletionHint')}
                         </Text>
                     </View>
                 </ScrollView>
