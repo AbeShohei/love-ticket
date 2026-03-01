@@ -121,13 +121,20 @@ export default function ProfileScreen() {
                     onPress: async () => {
                         try {
                             await deleteAccountMutation();
-                            await clerkUser?.delete();
-                            await signOut();
-                            router.replace('/login');
                         } catch (error) {
-                            console.error('Delete account error:', error);
-                            Alert.alert(t('common.error'), t('profile.deleteAccountFailed'));
+                            console.error('Convex delete error:', error);
                         }
+                        try {
+                            await clerkUser?.delete();
+                        } catch (error) {
+                            console.error('Clerk delete error:', error);
+                        }
+                        try {
+                            await signOut();
+                        } catch (error) {
+                            console.error('SignOut error:', error);
+                        }
+                        router.replace('/login');
                     }
                 }
             ]

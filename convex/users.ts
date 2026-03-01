@@ -321,6 +321,21 @@ export const deleteAccount = mutation({
       throw new Error("User not found");
     }
 
+    // Leave couple if paired
+    if (user.coupleId) {
+      // Remove coupleId from partner
+      const partner = await ctx.db
+        .query("users")
+        .withIndex("by_couple_id", (q) => q.eq("coupleId", user.coupleId!))
+        .filter((q) => q.neq(q.field("_id"), user._id))
+        .first();
+      if (partner) {
+        await ctx.db.patch(partner._id, { coupleId: undefined });
+      }
+      // Delete couple record
+      await ctx.db.delete(user.coupleId);
+    }
+
     // Delete daily usage records in parallel
     const usageRecords = await ctx.db
       .query("dailyUsage")
