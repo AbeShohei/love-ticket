@@ -305,6 +305,8 @@ export default function CreateProposal() {
                                             style={styles.titleInput}
                                             value={title}
                                             onChangeText={setTitle}
+                                            placeholder={t('proposals.titlePlaceholder')}
+                                            placeholderTextColor="rgba(255,255,255,0.7)"
                                             multiline
                                             maxLength={TITLE_MAX}
                                             autoFocus={true}
@@ -339,6 +341,8 @@ export default function CreateProposal() {
                                                 style={styles.descInput}
                                                 value={description}
                                                 onChangeText={setDescription}
+                                                placeholder={t('proposals.descriptionPlaceholder')}
+                                                placeholderTextColor="rgba(255,255,255,0.7)"
                                                 multiline
                                                 numberOfLines={3}
                                                 maxLength={DESCRIPTION_MAX}
@@ -353,6 +357,8 @@ export default function CreateProposal() {
                                                     style={styles.metaInput}
                                                     value={location}
                                                     onChangeText={setLocation}
+                                                    placeholder={t('proposals.locationPlaceholder')}
+                                                    placeholderTextColor="rgba(255,255,255,0.5)"
                                                     maxLength={LOCATION_MAX}
                                                 />
                                                 <Text style={styles.metaCharCount}>{location.length}/{LOCATION_MAX}</Text>
@@ -364,6 +370,8 @@ export default function CreateProposal() {
                                                     style={styles.metaInput}
                                                     value={price}
                                                     onChangeText={setPrice}
+                                                    placeholder={t('proposals.pricePlaceholder')}
+                                                    placeholderTextColor="rgba(255,255,255,0.5)"
                                                     maxLength={PRICE_MAX}
                                                 />
                                                 <Text style={styles.metaCharCount}>{price.length}/{PRICE_MAX}</Text>
@@ -375,6 +383,8 @@ export default function CreateProposal() {
                                                     style={styles.metaInput}
                                                     value={url}
                                                     onChangeText={setUrl}
+                                                    placeholder={t('proposals.url')}
+                                                    placeholderTextColor="rgba(255,255,255,0.5)"
                                                     keyboardType="url"
                                                     autoCapitalize="none"
                                                     maxLength={URL_MAX}

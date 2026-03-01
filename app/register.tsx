@@ -313,6 +313,8 @@ export default function Register() {
                                         style={styles.input}
                                         value={displayName}
                                         onChangeText={setDisplayName}
+                                        placeholder={t('auth.displayNameMax')}
+                                        placeholderTextColor="#666"
                                         autoCapitalize="none"
                                         maxLength={12}
                                     />
@@ -320,6 +322,8 @@ export default function Register() {
                                         style={styles.input}
                                         value={email}
                                         onChangeText={setEmail}
+                                        placeholder={t('auth.email')}
+                                        placeholderTextColor="#666"
                                         autoCapitalize="none"
                                         keyboardType="email-address"
                                         autoCorrect={false}
@@ -328,6 +332,8 @@ export default function Register() {
                                         style={styles.input}
                                         value={password}
                                         onChangeText={setPassword}
+                                        placeholder={t('auth.passwordMinLength')}
+                                        placeholderTextColor="#666"
                                         secureTextEntry
                                         autoCapitalize="none"
                                     />

@@ -105,6 +105,18 @@ export const join = mutation({
       throw new Error("無効な招待コードです");
     }
 
+    // Check if user already belongs to this couple
+    const user = await ctx.db.get(args.userId);
+    if (!user) {
+      throw new Error("ユーザーが見つかりません");
+    }
+    if (user.coupleId === couple._id) {
+      return couple._id; // Already in this couple
+    }
+    if (user.coupleId) {
+      throw new Error("既にカップルに参加しています");
+    }
+
     // Update the user's coupleId
     const now = Date.now();
     await ctx.db.patch(args.userId, {

@@ -119,7 +119,7 @@ export default function ProfileScreen() {
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            await deleteAccountMutation();
+                            await deleteAccountMutation({ clerkId: clerkUser?.id });
                         } catch (error) {
                             console.error('Convex delete error:', error);
                         }

@@ -1,7 +1,7 @@
 import { useAuth } from '@/providers/AuthProvider';
 import { useMutation, useQuery } from 'convex/react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 import { Heart } from 'lucide-react-native';
 import { api } from '@/convex/_generated/api';
@@ -17,12 +17,14 @@ export default function PairDeepLink() {
 
   const joinCouple = useMutation(api.couples.join);
   const coupleInfo = useQuery(api.couples.getByInviteCode, { inviteCode: inviteCode || '' });
+  const joinAttempted = useRef(false);
 
   useEffect(() => {
     async function handlePairing() {
+      if (joinAttempted.current) return;
+
       if (!inviteCode || !profile?._id) {
         if (!profile?._id) {
-          // User not logged in, redirect to login
           router.replace('/login');
           return;
         }
@@ -30,9 +32,7 @@ export default function PairDeepLink() {
         return;
       }
 
-      // Check if the couple exists
       if (coupleInfo === undefined) {
-        // Still loading
         return;
       }
 
@@ -42,10 +42,8 @@ export default function PairDeepLink() {
         return;
       }
 
-      // Check if user is already in a couple
       if (profile.coupleId) {
         if (profile.coupleId === coupleInfo._id) {
-          // Already in this couple
           router.replace('/' as any);
           return;
         } else {
@@ -55,12 +53,12 @@ export default function PairDeepLink() {
         }
       }
 
-      // Join the couple
+      joinAttempted.current = true;
       try {
         await joinCouple({ userId: profile._id, inviteCode });
         router.replace('/' as any);
       } catch (err) {
-        console.error('Failed to join couple:', err);
+        joinAttempted.current = false;
         setError(t('pairing.pairingFailed'));
       } finally {
         setLoading(false);

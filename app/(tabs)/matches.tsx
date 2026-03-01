@@ -548,7 +548,7 @@ export default function MatchesScreen() {
         <View style={styles.searchRow}>
           <View style={styles.searchBar}>
             <Ionicons name="search" size={20} color="#999" style={{ marginRight: 8 }} />
-            <TextInput style={styles.searchInput} />
+            <TextInput style={styles.searchInput} placeholder={t('matches.searchTickets')} placeholderTextColor="#999" />
           </View>
 
           <TouchableOpacity
@@ -690,6 +690,7 @@ export default function MatchesScreen() {
                     style={styles.modalTextInput}
                     value={planTitle}
                     onChangeText={setPlanTitle}
+                    placeholder={t('matches.planTitlePlaceholder')}
                   />
                 </View>
 
@@ -879,6 +880,7 @@ export default function MatchesScreen() {
                     style={styles.modalTextInput}
                     value={meetingPlace}
                     onChangeText={setMeetingPlace}
+                    placeholder={t('matches.meetingPlacePlaceholder')}
                   />
                 </View>
               </>

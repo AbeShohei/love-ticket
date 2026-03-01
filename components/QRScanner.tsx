@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { parsePairingUrl } from '@/utils/qrCode';
@@ -16,11 +16,13 @@ export function QRScanner({ onScanSuccess, onClose }: QRScannerProps) {
   const { t } = useTranslation();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
+  const scanLock = useRef(false);
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
   const handleBarCodeScanned = ({ data }: { type: string; data: string }) => {
-    if (scanned) return;
+    if (scanned || scanLock.current) return;
+    scanLock.current = true;
 
     const pairingData = parsePairingUrl(data);
 
@@ -30,11 +32,10 @@ export function QRScanner({ onScanSuccess, onClose }: QRScannerProps) {
         onScanSuccess(pairingData);
       }
     } else {
-      // Invalid QR code - show brief error but continue scanning
       Alert.alert(
         t('qrScanner.scanFailed'),
         t('qrScanner.invalidQRCode'),
-        [{ text: t('common.ok') }]
+        [{ text: t('common.ok'), onPress: () => { scanLock.current = false; } }]
       );
     }
   };
@@ -67,7 +68,7 @@ export function QRScanner({ onScanSuccess, onClose }: QRScannerProps) {
       <CameraView
         style={styles.camera}
         facing="back"
-        onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+        onBarcodeScanned={handleBarCodeScanned}
         barcodeScannerSettings={{
           barcodeTypes: ['qr'],
         }}

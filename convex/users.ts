@@ -305,16 +305,21 @@ export const updateSubscriptionStatus = mutation({
 
 // Delete account and all user data
 export const deleteAccount = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthenticated");
+  args: { clerkId: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    // Try auth first, fall back to explicit clerkId
+    let clerkId = args.clerkId;
+    if (!clerkId) {
+      const identity = await ctx.auth.getUserIdentity();
+      if (!identity) {
+        throw new Error("Unauthenticated");
+      }
+      clerkId = identity.subject;
     }
 
     const user = await ctx.db
       .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkId!))
       .first();
 
     if (!user) {
@@ -323,17 +328,48 @@ export const deleteAccount = mutation({
 
     // Leave couple if paired
     if (user.coupleId) {
+      const coupleId = user.coupleId;
+
       // Remove coupleId from partner
       const partner = await ctx.db
         .query("users")
-        .withIndex("by_couple_id", (q) => q.eq("coupleId", user.coupleId!))
+        .withIndex("by_couple_id", (q) => q.eq("coupleId", coupleId))
         .filter((q) => q.neq(q.field("_id"), user._id))
         .first();
       if (partner) {
         await ctx.db.patch(partner._id, { coupleId: undefined });
       }
+
+      // Delete matches
+      const matches = await ctx.db
+        .query("matches")
+        .withIndex("by_couple_id", (q) => q.eq("coupleId", coupleId))
+        .collect();
+      await Promise.all(matches.map((m) => ctx.db.delete(m._id)));
+
+      // Delete plans
+      const plans = await ctx.db
+        .query("plans")
+        .withIndex("by_couple_id", (q) => q.eq("coupleId", coupleId))
+        .collect();
+      await Promise.all(plans.map((p) => ctx.db.delete(p._id)));
+
+      // Delete custom proposals and their swipes
+      const proposals = await ctx.db
+        .query("proposals")
+        .withIndex("by_couple_id", (q) => q.eq("coupleId", coupleId))
+        .collect();
+      for (const proposal of proposals) {
+        const swipes = await ctx.db
+          .query("swipes")
+          .withIndex("by_proposal_id", (q) => q.eq("proposalId", proposal._id))
+          .collect();
+        await Promise.all(swipes.map((s) => ctx.db.delete(s._id)));
+        await ctx.db.delete(proposal._id);
+      }
+
       // Delete couple record
-      await ctx.db.delete(user.coupleId);
+      await ctx.db.delete(coupleId);
     }
 
     // Delete daily usage records in parallel

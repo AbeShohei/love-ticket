@@ -95,13 +95,16 @@ export default function Pairing() {
     await performJoinCouple(inviteCode);
   }
 
+  const joinLock = useRef(false);
   async function performJoinCouple(code: string) {
+    if (joinLock.current) return;
+    joinLock.current = true;
     setLoading(true);
     try {
       await joinCouple({ userId: profile!._id, inviteCode: code });
       router.replace('/(tabs)/profile');
     } catch (error) {
-      console.error('Failed to join couple:', error);
+      joinLock.current = false;
       Alert.alert(t('common.error'), t('pairing.invalidInviteCode'));
     } finally {
       setLoading(false);
@@ -287,6 +290,8 @@ export default function Pairing() {
             style={styles.input}
             value={inviteCode}
             onChangeText={setInviteCode}
+            placeholder={t('pairing.enterInviteCode')}
+            placeholderTextColor="#aaa"
             autoCapitalize="characters"
             maxLength={6}
           />

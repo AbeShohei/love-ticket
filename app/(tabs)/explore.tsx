@@ -328,6 +328,8 @@ export default function ExploreScreen() {
                                     style={styles.textInput}
                                     value={customInput}
                                     onChangeText={setCustomInput}
+                                    placeholder="例: 夜景が見たい、予算は1万円以内..."
+                                    placeholderTextColor="#999"
                                     multiline
                                     numberOfLines={3}
                                 />

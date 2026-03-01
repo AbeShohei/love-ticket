@@ -23,35 +23,12 @@ export function generatePairingUrl(userId: string, inviteCode: string): string {
  * Returns null if URL is invalid
  */
 export function parsePairingUrl(url: string): PairingData | null {
-  try {
-    // Handle both full URLs and scheme-only URLs
-    const urlObj = new URL(url);
-    if (urlObj.protocol !== `${URL_SCHEME}:`) {
-      return null;
-    }
-
-    // Path format: /pair/{userId}/{inviteCode}
-    const pathParts = urlObj.pathname.split('/').filter(Boolean);
-
-    if (pathParts.length !== 3 || pathParts[0] !== 'pair') {
-      return null;
-    }
-
-    const [, userId, inviteCode] = pathParts;
-
-    if (!userId || !inviteCode || inviteCode.length !== 6) {
-      return null;
-    }
-
-    return { userId, inviteCode: inviteCode.toUpperCase() };
-  } catch {
-    // Try parsing as a simpler format (without full URL structure)
-    const match = url.match(/^love-ticket:\/\/pair\/([^/]+)\/([A-Z0-9]{6})$/i);
-    if (match) {
-      return { userId: match[1], inviteCode: match[2].toUpperCase() };
-    }
-    return null;
+  // Use regex for reliable parsing across all platforms
+  const match = url.match(/^love-ticket:\/\/pair\/([^/]+)\/([A-Z0-9]{6})$/i);
+  if (match) {
+    return { userId: match[1], inviteCode: match[2].toUpperCase() };
   }
+  return null;
 }
 
 /**

@@ -213,6 +213,8 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
                             style={styles.input}
                             value={displayName}
                             onChangeText={setDisplayName}
+                            placeholder={t('profileEdit.displayNamePlaceholder')}
+                            placeholderTextColor="#999"
                             maxLength={12}
                         />
                         <Text style={styles.charCount}>{displayName.length}/12</Text>
