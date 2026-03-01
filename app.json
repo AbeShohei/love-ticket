@@ -3,6 +3,7 @@
     "name": "Love Ticket",
     "slug": "love-ticket",
     "version": "1.0.0",
+    "privacyPolicyUrl": "https://loveticket.net/privacy.html",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "love-ticket",
@@ -62,7 +63,11 @@
         }
       ],
       "expo-localization",
-      "expo-tracking-transparency"
+      "expo-tracking-transparency",
+      "expo-font",
+      "expo-image",
+      "expo-secure-store",
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true
