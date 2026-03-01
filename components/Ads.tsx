@@ -21,7 +21,7 @@ if (isAdMobAvailable) {
         TestIds = lib.TestIds;
         mobileAds = lib.mobileAds;
     } catch (e) {
-        console.warn('Failed to load react-native-google-mobile-ads:', e);
+        // AdMob load failed (non-critical)
     }
 }
 
@@ -80,7 +80,7 @@ export const BannerAdComponent: React.FC = () => {
         if (__DEV__) {
             return (
                 <View style={[styles.bannerContainer, { height: 50, backgroundColor: '#eee', borderStyle: 'dashed', borderWidth: 1 }]}>
-                    <Text style={{ fontSize: 10, color: '#999' }}>AdMob Banner Placeholder (Expo Go/Web)</Text>
+                    <Text style={{ fontSize: 10, color: '#999' }}>AdMob Banner (Dev)</Text>
                 </View>
             );
         }

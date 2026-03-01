@@ -8,6 +8,8 @@ import * as Notifications from 'expo-notifications';
 import { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 
+const NEEDS_NOTIFICATION_CHANNEL = Platform.OS !== 'ios';
+
 Notifications.setNotificationHandler({
     handleNotification: async () => ({
         shouldShowAlert: true,
@@ -56,7 +58,7 @@ export function usePushNotifications() {
 async function registerForPushNotificationsAsync() {
     let token;
 
-    if (Platform.OS === 'android') {
+    if (NEEDS_NOTIFICATION_CHANNEL) {
         await Notifications.setNotificationChannelAsync('default', {
             name: 'default',
             importance: Notifications.AndroidImportance.MAX,

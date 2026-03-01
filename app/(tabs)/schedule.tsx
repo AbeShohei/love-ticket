@@ -137,7 +137,7 @@ export default function ScheduleScreen() {
                             <Text style={styles.planTitleText}>{item.title}</Text>
                             <View style={styles.metaRow}>
                                 <Ionicons name="time-outline" size={14} color="rgba(255,255,255,0.8)" />
-                                <Text style={styles.metaText}>{item.finalTime || 'TBD'}</Text>
+                                <Text style={styles.metaText}>{item.finalTime || t('schedule.timeUnset')}</Text>
                             </View>
                             <View style={styles.metaRow}>
                                 <Ionicons name="location-outline" size={14} color="rgba(255,255,255,0.8)" />

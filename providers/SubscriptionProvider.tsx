@@ -104,7 +104,6 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
         const apiKey = Platform.OS === 'ios' ? IOS_API_KEY : ANDROID_API_KEY;
 
         if (!apiKey) {
-          console.warn('RevenueCat API key not configured');
           setIsLoading(false);
           return;
         }
@@ -125,9 +124,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
         setOfferings(offs);
 
         setIsConfigured(true);
-        console.log('RevenueCat initialized successfully');
       } catch (error) {
-        console.error('Failed to initialize RevenueCat:', error);
       } finally {
         setIsLoading(false);
       }

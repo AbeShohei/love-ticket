@@ -43,7 +43,16 @@
       "Bash(atos:*)",
       "Bash(npm uninstall:*)",
       "Bash(greenlight preflight:*)",
-      "Bash(npm show:*)"
+      "Bash(npm show:*)",
+      "Bash(sed:*)",
+      "Bash(defaults read:*)",
+      "Bash(npx convex:*)",
+      "Bash(eas whoami:*)",
+      "Bash(eas build:version:set:*)",
+      "Bash(expect:*)",
+      "Bash(gh repo:*)",
+      "Bash(brew install:*)",
+      "Bash(gh auth:*)"
     ]
   }
 }

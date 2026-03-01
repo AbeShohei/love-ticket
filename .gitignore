@@ -47,3 +47,4 @@ yarn-error.*
 # Build artifacts
 build/
 ios/build/
+.env

@@ -127,8 +127,6 @@ export default function Login() {
                 <View style={styles.inputContainer}>
                     <TextInput
                         style={styles.input}
-                        placeholder={t('auth.email')}
-                        placeholderTextColor="#666"
                         value={email}
                         onChangeText={setEmail}
                         autoCapitalize="none"
@@ -137,8 +135,6 @@ export default function Login() {
                     />
                     <TextInput
                         style={styles.input}
-                        placeholder={t('auth.password')}
-                        placeholderTextColor="#666"
                         value={password}
                         onChangeText={setPassword}
                         secureTextEntry

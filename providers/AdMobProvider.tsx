@@ -21,10 +21,8 @@ const isAdMobAvailable = !isExpoGo && !isWeb;
 // テストデバイスIDをここに追加
 // ログに表示される "To get test ads on this device, set: ..." からIDをコピー
 const TEST_DEVICE_IDS: string[] = [
-    'EMULATOR',  // Androidエミュレータ
+    'EMULATOR',
     // 実機のテストデバイスIDを追加（複数可）
-    // 'YOUR_IOS_DEVICE_ID',
-    // 'YOUR_ANDROID_DEVICE_ID',
 ];
 
 export const AdMobProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

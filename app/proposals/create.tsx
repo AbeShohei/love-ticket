@@ -237,7 +237,7 @@ export default function CreateProposal() {
                     <View style={styles.cardContainer}>
                         <View style={styles.card}>
 
-                            {/* Image Carousel / Placeholder */}
+                            {/* Image Carousel */}
                             <View style={styles.imageContainer}>
                                 <ScrollView
                                     ref={scrollViewRef}
@@ -303,8 +303,6 @@ export default function CreateProposal() {
                                     <>
                                         <TextInput
                                             style={styles.titleInput}
-                                            placeholder={t('proposals.titlePlaceholder')}
-                                            placeholderTextColor="rgba(255,255,255,0.7)"
                                             value={title}
                                             onChangeText={setTitle}
                                             multiline
@@ -339,8 +337,6 @@ export default function CreateProposal() {
                                         <View style={styles.descContainer}>
                                             <TextInput
                                                 style={styles.descInput}
-                                                placeholder={t('proposals.descriptionPlaceholder')}
-                                                placeholderTextColor="rgba(255,255,255,0.7)"
                                                 value={description}
                                                 onChangeText={setDescription}
                                                 multiline
@@ -355,8 +351,6 @@ export default function CreateProposal() {
                                                 <Ionicons name="location" size={20} color="#fff" style={styles.metaIcon} />
                                                 <TextInput
                                                     style={styles.metaInput}
-                                                    placeholder={t('proposals.locationPlaceholder')}
-                                                    placeholderTextColor="rgba(255,255,255,0.5)"
                                                     value={location}
                                                     onChangeText={setLocation}
                                                     maxLength={LOCATION_MAX}
@@ -368,8 +362,6 @@ export default function CreateProposal() {
                                                 <Ionicons name="cash" size={20} color="#fff" style={styles.metaIcon} />
                                                 <TextInput
                                                     style={styles.metaInput}
-                                                    placeholder={t('proposals.pricePlaceholder')}
-                                                    placeholderTextColor="rgba(255,255,255,0.5)"
                                                     value={price}
                                                     onChangeText={setPrice}
                                                     maxLength={PRICE_MAX}
@@ -381,8 +373,6 @@ export default function CreateProposal() {
                                                 <Ionicons name="link" size={20} color="#fff" style={styles.metaIcon} />
                                                 <TextInput
                                                     style={styles.metaInput}
-                                                    placeholder={t('proposals.url')}
-                                                    placeholderTextColor="rgba(255,255,255,0.5)"
                                                     value={url}
                                                     onChangeText={setUrl}
                                                     keyboardType="url"

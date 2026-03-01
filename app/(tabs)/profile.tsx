@@ -80,7 +80,6 @@ export default function ProfileScreen() {
                     anniversaryDate: newDate.getTime(),
                 });
             } catch (error) {
-                console.error('Failed to save anniversary:', error);
                 Alert.alert(t('common.error'), t('profile.anniversarySaveFailed'));
             }
         }

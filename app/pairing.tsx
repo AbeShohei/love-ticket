@@ -285,8 +285,6 @@ export default function Pairing() {
 
           <TextInput
             style={styles.input}
-            placeholder={t('pairing.enterInviteCode')}
-            placeholderTextColor="#aaa"
             value={inviteCode}
             onChangeText={setInviteCode}
             autoCapitalize="characters"

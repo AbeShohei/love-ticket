@@ -192,7 +192,8 @@
     "title": "スケジュール",
     "monthPlans": "{{month}}月の予定",
     "noPlansSubtext": "チケット画面からデートを計画しましょう！",
-    "dateSpots": "デートスポット ({{count}})"
+    "dateSpots": "デートスポット ({{count}})",
+    "timeUnset": "時間未定"
   },
   "settings": {
     "notifications": "通知設定",

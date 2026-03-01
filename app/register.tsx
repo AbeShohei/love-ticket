@@ -311,8 +311,6 @@ export default function Register() {
                                 <View style={styles.inputContainer}>
                                     <TextInput
                                         style={styles.input}
-                                        placeholder={t('auth.displayNameMax')}
-                                        placeholderTextColor="#666"
                                         value={displayName}
                                         onChangeText={setDisplayName}
                                         autoCapitalize="none"
@@ -320,8 +318,6 @@ export default function Register() {
                                     />
                                     <TextInput
                                         style={styles.input}
-                                        placeholder={t('auth.email')}
-                                        placeholderTextColor="#666"
                                         value={email}
                                         onChangeText={setEmail}
                                         autoCapitalize="none"
@@ -330,8 +326,6 @@ export default function Register() {
                                     />
                                     <TextInput
                                         style={styles.input}
-                                        placeholder={t('auth.passwordMinLength')}
-                                        placeholderTextColor="#666"
                                         value={password}
                                         onChangeText={setPassword}
                                         secureTextEntry

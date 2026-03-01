@@ -192,7 +192,8 @@
     "title": "Schedule",
     "monthPlans": "{{month}}'s Plans",
     "noPlansSubtext": "Plan a date from the tickets screen!",
-    "dateSpots": "Date Spots ({{count}})"
+    "dateSpots": "Date Spots ({{count}})",
+    "timeUnset": "Time not set"
   },
   "settings": {
     "notifications": "Notifications",

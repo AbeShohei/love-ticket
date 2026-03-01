@@ -206,7 +206,7 @@ export default function ExploreScreen() {
                 </View>
             </ScrollView>
 
-            {/* AI Plan Generator Modal - Disabled for Coming Soon
+            {/* AI Plan Generator Modal - Temporarily disabled
             <Modal
                 visible={isAIModalVisible}
                 animationType="slide"
@@ -326,8 +326,6 @@ export default function ExploreScreen() {
                                 <Text style={styles.formLabel}>希望や要望（任意）</Text>
                                 <TextInput
                                     style={styles.textInput}
-                                    placeholder="例: 夜景が見たい、予算は1万円以内..."
-                                    placeholderTextColor="#999"
                                     value={customInput}
                                     onChangeText={setCustomInput}
                                     multiline

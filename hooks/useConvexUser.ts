@@ -57,7 +57,7 @@ export function useConvexUser() {
         // Handle Apple Sign In which may not provide email/name
         const email = user.primaryEmailAddress?.emailAddress ||
           user.emailAddresses?.[0]?.emailAddress ||
-          `user_${user.id.slice(0, 8)}@placeholder.local`;
+          `user_${user.id.slice(0, 8)}@noemail.internal`;
 
         const displayName = user.fullName || user.username || user.firstName ||
           `User${user.id.slice(0, 4)}`;

@@ -94,22 +94,18 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
                 return;
             }
 
-            console.log('[ProfileEdit] Updating profile for clerkId:', clerkId);
 
             let storageId: string | undefined = undefined;
 
             // Upload image if changed and new URI is local file
             if (avatarUri && !avatarUri.startsWith('http')) {
-                console.log('[ProfileEdit] Starting image upload...');
                 try {
                     // 1. Get upload URL
                     const uploadUrl = await generateUploadUrl();
-                    console.log('[ProfileEdit] Got upload URL');
 
                     // 2. Convert URI to Blob
                     const response = await fetch(avatarUri);
                     const blob = await response.blob();
-                    console.log('[ProfileEdit] Blob created:', blob.size, blob.type);
 
                     // Double-check blob size
                     if (blob.size > MAX_IMAGE_SIZE) {
@@ -217,8 +213,6 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
                             style={styles.input}
                             value={displayName}
                             onChangeText={setDisplayName}
-                            placeholder={t('profileEdit.displayNamePlaceholder')}
-                            placeholderTextColor="#999"
                             maxLength={12}
                         />
                         <Text style={styles.charCount}>{displayName.length}/12</Text>

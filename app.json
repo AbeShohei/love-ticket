@@ -3,6 +3,7 @@
     "name": "Love Ticket",
     "slug": "love-ticket",
     "version": "1.0.0",
+    "description": "カップルのためのデートプランニングアプリ。スワイプでデートのアイデアを選び、パートナーとマッチしたプランをチケットとして保存。スケジュール管理もできる、ふたりの時間をもっと特別にするアプリです。",
     "privacyPolicyUrl": "https://loveticket.net/privacy.html",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",

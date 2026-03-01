@@ -1,6 +1,9 @@
 import RNDateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import React, { useState } from 'react';
 import { Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+
+const IS_IOS = Platform.OS === 'ios';
+const IS_WEB = Platform.OS === 'web';
 import { useTranslation } from 'react-i18next';
 
 interface Props {
@@ -63,7 +66,7 @@ export function NativeDateTimePicker({ mode = 'datetime', value, onChange, style
     : value.toLocaleDateString();
 
   // WEB Implementation
-  if (Platform.OS === 'web') {
+  if (IS_WEB) {
     const inputType = mode === 'date' ? 'date' : mode === 'time' ? 'time' : 'datetime-local';
     return (
       <View style={[styles.container, style]}>
@@ -97,7 +100,7 @@ export function NativeDateTimePicker({ mode = 'datetime', value, onChange, style
   }
 
   // iOS Implementation
-  if (Platform.OS === 'ios') {
+  if (IS_IOS) {
     return (
       <View style={[styles.container, style]}>
         {!isControlled && (
@@ -141,8 +144,8 @@ export function NativeDateTimePicker({ mode = 'datetime', value, onChange, style
     );
   }
 
-  // Android Implementation
-  if (Platform.OS === 'android') {
+  // Non-iOS/Web Implementation
+  if (!IS_IOS && !IS_WEB) {
     return (
       <View style={[styles.container, style]}>
         {!isControlled && (
@@ -159,7 +162,7 @@ export function NativeDateTimePicker({ mode = 'datetime', value, onChange, style
             mode={mode}
             value={value}
             onChange={handleAndroidChange}
-            display="default" // Default is dialog on Android
+            display="default"
           />
         )}
       </View>
