@@ -9,6 +9,7 @@ import { ProfileEditModal } from '@/components/ProfileEditModal';
 import { SubscriptionBanner } from '@/components/SubscriptionBanner';
 import { SubscriptionModal } from '@/components/SubscriptionModal';
 import { api } from '@/convex/_generated/api';
+import { useUser } from '@clerk/clerk-expo';
 import { useAuth } from '@/providers/AuthProvider';
 import { useSubscription } from '@/providers/SubscriptionProvider';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -23,6 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
     const { profile, signOut, convexId } = useAuth();
+    const { user: clerkUser } = useUser();
     const { isPremium, customerInfo } = useSubscription();
     const router = useRouter();
     const insets = useSafeAreaInsets();
@@ -119,6 +121,7 @@ export default function ProfileScreen() {
                     onPress: async () => {
                         try {
                             await deleteAccountMutation();
+                            await clerkUser?.delete();
                             await signOut();
                             router.replace('/login');
                         } catch (error) {

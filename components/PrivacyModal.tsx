@@ -58,7 +58,7 @@ export function PrivacyModal({ visible, onClose }: Props) {
                         <TouchableOpacity
                             style={styles.linkRow}
                             onPress={() =>
-                                Linking.openURL('https://love-ticket.app/privacy')
+                                Linking.openURL('https://loveticket.net/privacy.html')
                             }
                         >
                             <Ionicons name="document-text-outline" size={20} color="#666" />
@@ -68,7 +68,7 @@ export function PrivacyModal({ visible, onClose }: Props) {
                         <TouchableOpacity
                             style={styles.linkRow}
                             onPress={() =>
-                                Linking.openURL('https://love-ticket.app/terms')
+                                Linking.openURL('https://loveticket.net/terms.html')
                             }
                         >
                             <Ionicons name="reader-outline" size={20} color="#666" />
