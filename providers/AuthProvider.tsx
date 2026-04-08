@@ -49,6 +49,7 @@ type AuthContextType = {
 
     // Auth actions
     signIn: (email: string, password: string) => Promise<void>;
+    verifySignInCode: (code: string) => Promise<void>;
     signUp: (email: string, password: string, displayName: string) => Promise<void>;
     verifyEmail: (code: string) => Promise<void>;
     signOut: () => Promise<void>;
@@ -66,6 +67,7 @@ const AuthContext = createContext<AuthContextType>({
     convexId: null,
     couple: null,
     signIn: async () => { },
+    verifySignInCode: async () => { },
     signUp: async () => { },
     verifyEmail: async () => { },
     signOut: async () => { },
@@ -135,13 +137,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             });
 
             if (result.status === 'complete' && result.createdSessionId) {
-                // Activate the session so isSignedIn becomes true
                 await clerkSetActive({ session: result.createdSessionId });
                 return;
             }
 
+            if (result.status === 'needs_second_factor') {
+                // Clerk requires email verification for untrusted clients
+                await clerkSignIn.prepareSecondFactor({ strategy: 'email_code' });
+                throw new Error('__NEEDS_SIGN_IN_VERIFY__');
+            }
+
             if (result.status === 'complete') {
-                // Edge case: complete but no session ID — shouldn't happen normally
                 console.warn('[Auth] signIn complete but no createdSessionId');
                 return;
             }
@@ -155,7 +161,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 errorMessage.toLowerCase().includes('single session mode')) {
                 try {
                     await clerkSignOut();
-                    // Retry sign in after clearing session
                     const result = await clerkSignIn.create({
                         identifier: email,
                         password,
@@ -171,6 +176,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
             throw new Error(errorMessage || 'Sign in failed');
         }
+    };
+
+    // Verify sign-in email code (for Clerk client trust)
+    const verifySignInCode = async (code: string) => {
+        if (!clerkSignIn) {
+            throw new Error('SignIn not ready');
+        }
+
+        const result = await clerkSignIn.attemptSecondFactor({
+            strategy: 'email_code',
+            code,
+        });
+
+        if (result.status === 'complete' && result.createdSessionId) {
+            await clerkSetActive({ session: result.createdSessionId });
+            return;
+        }
+
+        throw new Error('Verification failed');
     };
 
     // Sign up with email/password
@@ -288,6 +312,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         convexId: convexUser?._id ?? null,
         couple,
         signIn,
+        verifySignInCode,
         signUp,
         verifyEmail,
         signOut,

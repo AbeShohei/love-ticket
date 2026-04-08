@@ -24,11 +24,24 @@ export default function Pairing() {
   const [showQRModal, setShowQRModal] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [createdCoupleId, setCreatedCoupleId] = useState<Id<"couples"> | null>(null);
-  const { profile } = useAuth();
+  const { profile, signOut } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const redirectAttempted = useRef(false);
   const { t } = useTranslation();
+
+  const handleLogout = async () => {
+    Alert.alert(
+      t('auth.logoutConfirmTitle'),
+      t('auth.logoutConfirmMessage'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('auth.logout'), style: 'destructive', onPress: async () => {
+          await signOut();
+        }},
+      ]
+    );
+  };
 
   const createCouple = useMutation(api.couples.create);
   const joinCouple = useMutation(api.couples.join);
@@ -249,6 +262,11 @@ export default function Pairing() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <Ionicons name="log-out-outline" size={20} color="#999" />
+        <Text style={styles.logoutText}>{t('auth.logout')}</Text>
+      </TouchableOpacity>
+
       <Text style={styles.title}>{t('pairing.title')}</Text>
       <Text style={styles.subtitle}>{t('pairing.subtitle')}</Text>
 
@@ -571,5 +589,18 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     letterSpacing: 4,
     color: '#333',
+  },
+  logoutButton: {
+    position: 'absolute',
+    top: 60,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    zIndex: 10,
+  },
+  logoutText: {
+    fontSize: 14,
+    color: '#999',
   },
 });

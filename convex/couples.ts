@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
 // Generate a random 6-character invite code
@@ -102,19 +102,19 @@ export const join = mutation({
       .first();
 
     if (!couple) {
-      throw new Error("無効な招待コードです");
+      throw new ConvexError("無効な招待コードです");
     }
 
     // Check if user already belongs to this couple
     const user = await ctx.db.get(args.userId);
     if (!user) {
-      throw new Error("ユーザーが見つかりません");
+      throw new ConvexError("ユーザーが見つかりません");
     }
     if (user.coupleId === couple._id) {
       return couple._id; // Already in this couple
     }
     if (user.coupleId) {
-      throw new Error("既にカップルに参加しています");
+      throw new ConvexError("既にカップルに参加しています");
     }
 
     // Update the user's coupleId
@@ -175,7 +175,7 @@ export const leave = mutation({
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId);
     if (!user || !user.coupleId) {
-      throw new Error("カップルに参加していません");
+      throw new ConvexError("カップルに参加していません");
     }
 
     const coupleId = user.coupleId;

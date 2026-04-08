@@ -1,5 +1,6 @@
-import { useOAuth } from '@clerk/clerk-expo';
+import { useSignInWithApple, useSSO } from '@clerk/clerk-expo';
 import { FontAwesome5 } from '@expo/vector-icons';
+import * as AuthSession from 'expo-auth-session';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
@@ -18,14 +19,16 @@ export default function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
-    const { signIn } = useAuth();
+    const [needsVerify, setNeedsVerify] = useState(false);
+    const [verifyCode, setVerifyCode] = useState('');
+    const { signIn, verifySignInCode } = useAuth();
     const router = useRouter();
     const { t } = useTranslation();
 
-    // Google OAuth
-    const { startOAuthFlow: startGoogleOAuth } = useOAuth({ strategy: 'oauth_google' });
-    // Apple OAuth
-    const { startOAuthFlow: startAppleOAuth } = useOAuth({ strategy: 'oauth_apple' });
+    // Google OAuth via SSO
+    const { startSSOFlow } = useSSO();
+    // Native Apple Sign In
+    const { startAppleAuthenticationFlow } = useSignInWithApple();
 
     async function handleSignIn() {
         if (!email.trim() || !password.trim()) {
@@ -43,17 +46,41 @@ export default function Login() {
             if (Platform.OS !== 'web') {
                 await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             }
-            // Navigation is handled by _layout.tsx when isSignedIn changes
+        } catch (error: any) {
+            if (error.message === '__NEEDS_SIGN_IN_VERIFY__') {
+                setNeedsVerify(true);
+                return;
+            }
+            if (Platform.OS !== 'web') {
+                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            }
+            const raw = error.errors?.[0]?.message || error.message || '';
+            const message = raw.includes('password') ? t('auth.incorrectPassword')
+                : raw.includes('Identifier') || raw.includes('identifier') ? t('auth.accountNotFound')
+                : raw.includes('session') ? t('auth.sessionError')
+                : raw || t('auth.loginFailed');
+            Alert.alert(t('auth.loginError'), message);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function handleVerifySignIn() {
+        if (!verifyCode.trim()) {
+            Alert.alert(t('common.error'), t('auth.enterVerifyCode'));
+            return;
+        }
+        setLoading(true);
+        try {
+            await verifySignInCode(verifyCode.trim());
+            if (Platform.OS !== 'web') {
+                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            }
         } catch (error: any) {
             if (Platform.OS !== 'web') {
                 await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             }
-            const message = error.message || t('auth.loginFailed');
-            if (Platform.OS === 'web') {
-                alert(message);
-            } else {
-                Alert.alert(t('auth.loginError'), message);
-            }
+            Alert.alert(t('auth.loginError'), t('auth.invalidVerifyCode'));
         } finally {
             setLoading(false);
         }
@@ -65,11 +92,11 @@ export default function Login() {
         }
         setLoading(true);
         try {
-            const { createdSessionId, setActive } = await startGoogleOAuth();
+            const redirectUrl = AuthSession.makeRedirectUri({ path: 'oauth-native-callback' });
+            const { createdSessionId, setActive } = await startSSOFlow({ strategy: 'oauth_google', redirectUrl });
 
             if (createdSessionId && setActive) {
                 await setActive({ session: createdSessionId });
-                // Navigation is handled by _layout.tsx
             }
         } catch (error: any) {
             console.error('Google OAuth error:', error);
@@ -85,11 +112,10 @@ export default function Login() {
         }
         setLoading(true);
         try {
-            const { createdSessionId, setActive } = await startAppleOAuth();
+            const { createdSessionId, setActive } = await startAppleAuthenticationFlow();
 
             if (createdSessionId && setActive) {
                 await setActive({ session: createdSessionId });
-                // Navigation is handled by _layout.tsx
             }
         } catch (error: any) {
             console.error('Apple OAuth error:', error);
@@ -97,6 +123,71 @@ export default function Login() {
         } finally {
             setLoading(false);
         }
+    }
+
+    if (needsVerify) {
+        return (
+            <View style={styles.container}>
+                <Image
+                    source={{ uri: 'https://images.unsplash.com/photo-1518621736915-f3b1c41bfd00?q=80&w=3786&auto=format&fit=crop' }}
+                    style={StyleSheet.absoluteFillObject}
+                    contentFit="cover"
+                />
+                <BlurView intensity={80} tint="light" style={StyleSheet.absoluteFillObject} />
+
+                <View style={styles.content}>
+                    <View style={styles.logoContainer}>
+                        <View style={styles.logoCircle}>
+                            <Image
+                                source={require('../assets/images/icon.png')}
+                                style={styles.logoImage}
+                                contentFit="contain"
+                            />
+                        </View>
+                    </View>
+
+                    <Text style={styles.title}>LoveTicket</Text>
+                    <Text style={styles.subtitle}>{t('auth.verifySignInSubtitle')}</Text>
+
+                    <View style={styles.inputContainer}>
+                        <TextInput
+                            style={styles.input}
+                            value={verifyCode}
+                            onChangeText={setVerifyCode}
+                            placeholder={t('auth.enterVerifyCode')}
+                            placeholderTextColor="#666"
+                            keyboardType="number-pad"
+                            maxLength={6}
+                            autoFocus
+                        />
+                    </View>
+
+                    <TouchableOpacity
+                        onPress={handleVerifySignIn}
+                        disabled={loading}
+                        activeOpacity={0.8}
+                        style={styles.buttonWrapper}
+                    >
+                        <LinearGradient
+                            colors={['#FF4B4B', '#FF9068']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.button}
+                        >
+                            {loading ? (
+                                <ActivityIndicator color="#fff" />
+                            ) : (
+                                <Text style={styles.buttonText}>{t('auth.verify')}</Text>
+                            )}
+                        </LinearGradient>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity onPress={() => { setNeedsVerify(false); setVerifyCode(''); }}>
+                        <Text style={styles.link}>{t('common.back')}</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        );
     }
 
     return (

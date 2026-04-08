@@ -1,5 +1,6 @@
-import { useOAuth } from '@clerk/clerk-expo';
+import { useSignInWithApple, useSSO } from '@clerk/clerk-expo';
 import { FontAwesome5 } from '@expo/vector-icons';
+import * as AuthSession from 'expo-auth-session';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
@@ -26,10 +27,10 @@ export default function Register() {
     const router = useRouter();
     const { t } = useTranslation();
 
-    // Google OAuth
-    const { startOAuthFlow: startGoogleOAuth } = useOAuth({ strategy: 'oauth_google' });
-    // Apple OAuth
-    const { startOAuthFlow: startAppleOAuth } = useOAuth({ strategy: 'oauth_apple' });
+    // Google OAuth via SSO
+    const { startSSOFlow } = useSSO();
+    // Native Apple Sign In
+    const { startAppleAuthenticationFlow } = useSignInWithApple();
 
     async function handleSignUp() {
         if (!email.trim() || !password.trim() || !displayName.trim()) {
@@ -71,7 +72,11 @@ export default function Register() {
                 if (Platform.OS !== 'web') {
                     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
                 }
-                const message = error.message || t('auth.registerFailed');
+                const raw = error.errors?.[0]?.message || error.message || '';
+                const message = raw.includes('password') ? t('auth.passwordTooWeak')
+                    : raw.includes('email') && raw.includes('taken') ? t('auth.emailAlreadyTaken')
+                    : raw.includes('Identifier') || raw.includes('identifier') ? t('auth.invalidEmail')
+                    : raw || t('auth.registerFailed');
                 if (Platform.OS === 'web') {
                     alert(message);
                 } else {
@@ -161,11 +166,11 @@ export default function Register() {
         }
         setLoading(true);
         try {
-            const { createdSessionId, setActive } = await startGoogleOAuth();
+            const redirectUrl = AuthSession.makeRedirectUri({ path: 'oauth-native-callback' });
+            const { createdSessionId, setActive } = await startSSOFlow({ strategy: 'oauth_google', redirectUrl });
 
             if (createdSessionId && setActive) {
                 await setActive({ session: createdSessionId });
-                // Navigation is handled by _layout.tsx
             }
         } catch (error: any) {
             console.error('Google OAuth error:', error);
@@ -181,11 +186,10 @@ export default function Register() {
         }
         setLoading(true);
         try {
-            const { createdSessionId, setActive } = await startAppleOAuth();
+            const { createdSessionId, setActive } = await startAppleAuthenticationFlow();
 
             if (createdSessionId && setActive) {
                 await setActive({ session: createdSessionId });
-                // Navigation is handled by _layout.tsx
             }
         } catch (error: any) {
             console.error('Apple OAuth error:', error);

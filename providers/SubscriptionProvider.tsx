@@ -59,7 +59,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
   const updateSubscriptionStatus = useMutation(api.users.updateSubscriptionStatus);
 
   // Determine if user has premium access
-  const isPremium = customerInfo?.activeSubscriptions?.length > 0 ||
+  const isPremium = (customerInfo?.activeSubscriptions?.length ?? 0) > 0 ||
     customerInfo?.entitlements?.active?.[ENTITLEMENT_ID] !== undefined;
 
   // Get subscription tier from customerInfo
@@ -95,7 +95,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
       }
 
       try {
-        // Set log level for debugging
+        // Set log level for debugging (only in development)
         if (__DEV__) {
           Purchases.setLogLevel(LOG_LEVEL.DEBUG);
         }
@@ -120,11 +120,16 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
           Purchases.getOfferings(),
         ]);
 
+        if (__DEV__) {
+          console.log('[RevenueCat] Offerings:', offs?.current?.identifier);
+        }
+
         setCustomerInfo(info);
         setOfferings(offs);
 
         setIsConfigured(true);
       } catch (error) {
+        console.error('[RevenueCat] initialization error:', error);
       } finally {
         setIsLoading(false);
       }
