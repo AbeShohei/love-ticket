@@ -114,7 +114,25 @@ export const join = mutation({
       return couple._id; // Already in this couple
     }
     if (user.coupleId) {
-      throw new ConvexError("既にカップルに参加しています");
+      // If user has a pending couple they created (no partner yet), auto-leave it
+      const existingCouple = await ctx.db.get(user.coupleId);
+      if (existingCouple && existingCouple.status === "pending") {
+        // Check no one else is in that pending couple
+        const otherMembers = await ctx.db
+          .query("users")
+          .withIndex("by_couple_id", (q) => q.eq("coupleId", user.coupleId!))
+          .filter((q) => q.neq(q.field("_id"), args.userId))
+          .collect();
+        if (otherMembers.length === 0) {
+          // Safe to abandon the pending couple
+          await ctx.db.delete(user.coupleId);
+          await ctx.db.patch(args.userId, { coupleId: undefined, updatedAt: Date.now() });
+        } else {
+          throw new ConvexError("既にアクティブなカップルに参加しています");
+        }
+      } else {
+        throw new ConvexError("既にカップルに参加しています");
+      }
     }
 
     // Update the user's coupleId

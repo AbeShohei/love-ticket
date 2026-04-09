@@ -115,10 +115,18 @@ export default function Pairing() {
     setLoading(true);
     try {
       await joinCouple({ userId: profile!._id, inviteCode: code });
-      router.replace('/(tabs)/profile');
-    } catch (error) {
       joinLock.current = false;
-      Alert.alert(t('common.error'), t('pairing.invalidInviteCode'));
+      router.replace('/(tabs)/profile');
+    } catch (error: any) {
+      joinLock.current = false;
+      const msg: string = error?.data ?? error?.message ?? '';
+      if (msg.includes('既にアクティブ') || msg.includes('既にカップルに参加')) {
+        Alert.alert(t('common.error'), t('pairing.alreadyInCouple'));
+      } else if (msg.includes('ユーザーが見つかりません')) {
+        Alert.alert(t('common.error'), t('pairing.userNotFound'));
+      } else {
+        Alert.alert(t('common.error'), t('pairing.invalidInviteCode'));
+      }
     } finally {
       setLoading(false);
     }
