@@ -117,11 +117,11 @@ export function SubscriptionModal({ visible, onClose }: Props) {
             return;
         }
 
-        const success = await purchasePackage(selectedPlan);
-
-        if (!success) {
-            // Don't show error if user cancelled
-            // The purchasePackage function handles userCancelled internally
+        try {
+            await purchasePackage(selectedPlan);
+        } catch {
+            // purchasePackage throws on actual errors (not on user cancel)
+            Alert.alert(t('common.error'), t('subscription.purchaseFailed'));
         }
     };
 

@@ -196,12 +196,21 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
       return false;
     }
 
-    const packageToPurchase = packageIdentifier === 'monthly'
+    // Try convenience accessor first, then fall back to searching availablePackages by identifier
+    let packageToPurchase = packageIdentifier === 'monthly'
       ? offerings.current.monthly
       : offerings.current.weekly;
 
     if (!packageToPurchase) {
-      console.error(`Package ${packageIdentifier} not found`);
+      const keyword = packageIdentifier; // 'monthly' or 'weekly'
+      packageToPurchase = offerings.current.availablePackages.find(
+        p => p.identifier.toLowerCase().includes(keyword) ||
+             p.product.identifier.toLowerCase().includes(keyword)
+      ) ?? null;
+    }
+
+    if (!packageToPurchase) {
+      console.error(`Package ${packageIdentifier} not found in offerings`);
       return false;
     }
 
@@ -222,10 +231,12 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
 
       return true;
     } catch (error: any) {
-      if (!error.userCancelled) {
-        console.error('Purchase failed:', error);
+      if (error.userCancelled) {
+        // User cancelled — not an error, return null to distinguish from failure
+        return null as unknown as boolean;
       }
-      return false;
+      console.error('Purchase failed:', error);
+      throw error; // Re-throw so the modal can show an error
     } finally {
       setIsPurchasing(false);
     }
