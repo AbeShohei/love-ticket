@@ -272,6 +272,7 @@
       "unlimitedProposals": "提案回数が無制限",
       "unlimitedProposalsDesc": "デートの提案を好きなだけ送れます",
       "unlimitedLikes": "無制限のLike",
+      "unlimitedLikesDesc": "1日の上限なしで、気になるデートにいくらでもLikeできます",
       "unlimitedSuperLikes": "無制限のスーパーLike"
     },
     "currentPlan": "現在のプラン",
