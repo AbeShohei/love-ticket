@@ -1,5 +1,6 @@
 import { BannerAdComponent } from '@/components/Ads';
 import { CATEGORIES } from '@/constants/Presets';
+import { onMatchForReviewPrompt } from '@/utils/reviewPrompt';
 import { api } from '@/convex/_generated/api';
 import { useAuth } from '@/providers/AuthProvider';
 import { useSubscription } from '@/providers/SubscriptionProvider';
@@ -267,6 +268,7 @@ export default function SwipeScreen() {
             price: activeProposal.price,
             url: activeProposal.url,
           });
+          onMatchForReviewPrompt();
         }
       } catch (error) {
         console.error('Failed to record swipe:', error);
