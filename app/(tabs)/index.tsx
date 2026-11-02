@@ -1,4 +1,5 @@
 import { BannerAdComponent } from '@/components/Ads';
+import { SubscriptionModal } from '@/components/SubscriptionModal';
 import { CATEGORIES } from '@/constants/Presets';
 import { api } from '@/convex/_generated/api';
 import { useAuth } from '@/providers/AuthProvider';
@@ -14,7 +15,7 @@ import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, Linking, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
@@ -79,6 +80,15 @@ export default function SwipeScreen() {
   const { profile, couple, convexId } = useAuth();
   const { isPremium } = useSubscription();
   const { t } = useTranslation();
+
+  // Paywall shown at the moment a free user hits a daily limit
+  const [isPaywallVisible, setIsPaywallVisible] = useState(false);
+  const openPaywall = useCallback(() => {
+    if (Platform.OS !== 'web') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    }
+    setIsPaywallVisible(true);
+  }, []);
 
   // Get ad data with translations
   const AD_DATA = useMemo(() => AdDataComponent({ t }), [t]);
@@ -191,18 +201,12 @@ export default function SwipeScreen() {
     // Check Limits (skip for premium users)
     if (!isPremium) {
       if (direction === 'right' && dailyUsage.like_count >= DAILY_LIKE_LIMIT) {
-        if (Platform.OS !== 'web') {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        }
-        Alert.alert(t('home.likeLimitReached'), t('home.likeLimitMessage'));
+        openPaywall();
         return;
       }
 
       if (direction === 'up' && dailyUsage.super_like_count >= DAILY_SUPER_LIKE_LIMIT) {
-        if (Platform.OS !== 'web') {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        }
-        Alert.alert(t('home.likeLimitReached'), t('home.superLikeLimitMessage'));
+        openPaywall();
         return;
       }
     }
@@ -394,6 +398,7 @@ export default function SwipeScreen() {
               item={item}
               onSwipe={onSwipeComplete}
               canLike={isPremium || dailyUsage.like_count < DAILY_LIKE_LIMIT}
+              onLimitReached={openPaywall}
               isActive={isTop}
               sharedX={translateX}
               sharedY={translateY}
@@ -461,6 +466,10 @@ export default function SwipeScreen() {
       <View style={{ position: 'absolute', top: insets.top, left: 0, right: 0, zIndex: 1000 }}>
         <BannerAdComponent />
       </View>
+      <SubscriptionModal
+        visible={isPaywallVisible}
+        onClose={() => setIsPaywallVisible(false)}
+      />
     </GestureHandlerRootView>
   );
 }
@@ -687,7 +696,7 @@ const Card = React.memo(({ item, isTop }: { item: Proposal, isTop: boolean }) =>
   );
 });
 
-const SwipeableCard = React.memo(forwardRef(({ item, onSwipe, canLike, isActive, sharedX, sharedY }: { item: Proposal, onSwipe: (dir: 'left' | 'right' | 'up') => void, canLike: boolean, isActive: boolean, sharedX: any, sharedY: any }, ref) => {
+const SwipeableCard = React.memo(forwardRef(({ item, onSwipe, canLike, onLimitReached, isActive, sharedX, sharedY }: { item: Proposal, onSwipe: (dir: 'left' | 'right' | 'up') => void, canLike: boolean, onLimitReached: () => void, isActive: boolean, sharedX: any, sharedY: any }, ref) => {
   const localX = useSharedValue(0);
   const localY = useSharedValue(0);
   const rotation = useSharedValue(0);
@@ -719,7 +728,7 @@ const SwipeableCard = React.memo(forwardRef(({ item, onSwipe, canLike, isActive,
         rotation.value = withTiming(-30, { duration });
       } else if (direction === 'right') {
         if (!canLike) {
-          runOnJS(Alert.alert)('Limit', 'Come back tomorrow!');
+          onLimitReached();
           return;
         }
         localX.value = withTiming(SCREEN_WIDTH * 1.8, { duration }, () => {
@@ -762,7 +771,7 @@ const SwipeableCard = React.memo(forwardRef(({ item, onSwipe, canLike, isActive,
           localX.value = withSpring(0);
           localY.value = withSpring(0);
           rotation.value = withSpring(0);
-          runOnJS(Alert.alert)('Limit', 'Come back tomorrow!');
+          runOnJS(onLimitReached)();
           return;
         }
         localX.value = withTiming(SCREEN_WIDTH * 1.8, { duration: 300 }, () => {

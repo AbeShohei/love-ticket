@@ -249,7 +249,7 @@
     "monthlyPlan": "月額プラン",
     "weeklyPlan": "週額プラン",
     "monthlyPrice": "¥1,500",
-    "weeklyPrice": "¥600",
+    "weeklyPrice": "¥480",
     "monthlySavings": "週額よりお得",
     "mostPopular": "一番人気",
     "startMonthly": "月額プランで始める",
@@ -272,6 +272,7 @@
       "unlimitedProposals": "提案回数が無制限",
       "unlimitedProposalsDesc": "デートの提案を好きなだけ送れます",
       "unlimitedLikes": "無制限のLike",
+      "unlimitedLikesDesc": "1日の上限なしで、気になるデートにいくらでもLikeできます",
       "unlimitedSuperLikes": "無制限のスーパーLike"
     },
     "currentPlan": "現在のプラン",

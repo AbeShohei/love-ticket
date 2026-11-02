@@ -65,6 +65,7 @@ export function SubscriptionModal({ visible, onClose }: Props) {
     }, [visible]);
 
     const FEATURES = [
+        { icon: 'heart-outline', title: t('subscription.features.unlimitedLikes'), desc: t('subscription.features.unlimitedLikesDesc') },
         { icon: 'megaphone-outline', title: t('subscription.features.noAds'), desc: t('subscription.features.noAdsDesc') },
         { icon: 'sparkles-outline', title: t('subscription.features.unlimitedAI'), desc: t('subscription.features.unlimitedAIDesc') },
         { icon: 'infinite-outline', title: t('subscription.features.unlimitedProposals'), desc: t('subscription.features.unlimitedProposalsDesc') },
